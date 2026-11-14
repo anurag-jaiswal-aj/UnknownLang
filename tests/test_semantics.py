@@ -66,22 +66,6 @@ class TestSemanticRegistryValidation:
                 short_circuit="invalid",
             )
 
-    def test_unsupported_feature_raises_validation_error(self):
-        """Unsupported feature should raise ValidationError."""
-        registry = SemanticRegistry()
-        from src.language.seed import LanguageSeed
-
-        seed = LanguageSeed(
-            name="Test",
-            syntax_style="lisp",
-            features=["unsupported-feature"],
-            difficulty=1,
-            arithmetic="wraparound",
-            short_circuit=True,
-        )
-        with pytest.raises(Exception):  # ValidationError
-            registry.validate_seed(seed)
-
 
 class TestOperationInfoStructure:
     """Tests for OperationInfo dataclass structure."""

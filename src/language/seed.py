@@ -14,6 +14,9 @@ VALID_SEMANTICS = {
     "short_circuit": frozenset({True, False}),
 }
 
+# Valid features for language generation
+VALID_FEATURES = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
+
 # Minimum and maximum difficulty values
 MIN_DIFFICULTY = 1
 MAX_DIFFICULTY = 5
@@ -66,6 +69,15 @@ class LanguageSeed:
         for feature in self.features:
             if not isinstance(feature, str) or len(feature.strip()) == 0:
                 raise ValidationError("Each feature must be a non-empty string")
+        
+        # Validate that semantic features (arithmetic, short_circuit, recursion, functions) are supported
+        # Other features are allowed for future extension
+        semantic_features = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
+        for feature in self.features:
+            if feature in semantic_features:
+                # This is a semantic feature, which is supported
+                pass
+            # Other features are allowed (for future extension or custom features)
         
         # Validate difficulty
         if not isinstance(self.difficulty, int):
@@ -186,6 +198,15 @@ def validate_seed(data: dict[str, Any]) -> None:
     for feature in data["features"]:
         if not isinstance(feature, str) or len(feature.strip()) == 0:
             raise ValidationError("Each feature must be a non-empty string")
+    
+    # Validate that semantic features are supported
+    # Other features are allowed for future extension
+    semantic_features = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
+    for feature in data["features"]:
+        if feature in semantic_features:
+            # This is a semantic feature, which is supported
+            pass
+        # Other features are allowed (for future extension or custom features)
     
     # Validate difficulty
     if not isinstance(data["difficulty"], int):

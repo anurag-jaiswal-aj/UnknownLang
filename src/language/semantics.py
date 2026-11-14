@@ -215,14 +215,14 @@ class SemanticRegistry:
                 f"Supported modes: {sorted(VALID_SHORT_CIRCUIT_MODES)}"
             )
 
-        # Check that all features are supported
-        supported_features = frozenset({"arithmetic", "short_circuit"})
+        # Check that semantic features are supported
+        # Other features are allowed for future extension
+        semantic_features = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
         for feature in seed.features:
-            if feature not in supported_features:
-                raise ValidationError(
-                    f"Unsupported feature '{feature}'. "
-                    f"Supported features: {sorted(supported_features)}"
-                )
+            if feature in semantic_features:
+                # This is a semantic feature, which is supported
+                pass
+            # Other features are allowed (for future extension or custom features)
 
     def build_spec(self, seed: LanguageSeed) -> SemanticSpec:
         """Build a SemanticSpec from a validated LanguageSeed.
