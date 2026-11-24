@@ -288,7 +288,103 @@ execution without the sandbox.
 
 **Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
 
-## Part 3. Technical corrections
+### AM-10 - Research hypothesis protocol
+
+**Original requirements:** Requirement 3.1 requires a 50th-percentile comparison between models and
+held-out language variants. Requirement 3.2 requires a complexity/degradation correlation.
+
+**Proposed amendment:**
+
+> The Wave 2 benchmark SHALL preregister the model population, percentile calculation, held-out
+> endpoint, comparison statistic and non-circular analysis before real-model evaluation. Grammar-rule
+> count and token-diversity correlation SHALL be deferred unless the benchmark generates observable
+> grammar variation. Surface-name and semantic-configuration factors SHALL not be described as
+> grammar complexity.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-11 - Variant count
+
+**Original requirement:** Requirement 3.3 requires at least 100 unique language variants per difficulty
+level in one execution.
+
+**Proposed amendment:**
+
+> For the fixed Wave 1 grammar family, a variant SHALL mean a reproducibly identified environment
+> consisting of a validated surface profile and semantic configuration. Wave 2 SHALL generate at least
+> 100 such variants per difficulty only if the owner accepts surface/environment variants as the unit.
+> A requirement for 100 genuinely different grammar families is deferred to a later language-family
+> milestone.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-12 - Novelty and public-data verification
+
+**Original requirement:** Requirement 4.1 requires verifying that no language version exists in public
+repositories or training datasets and recording the result with a timestamp.
+
+**Proposed amendment:**
+
+> The platform SHALL report a bounded search over named public repositories, indexes and datasets,
+> including query method, search timestamp and “not found in searched sources” results. It SHALL NOT
+> claim to prove absence from all training datasets. Family-level contamination remains an explicit
+> research limitation.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-13 - Collection and string limits
+
+**Original requirement:** Requirement 6.5 and Requirement 7.5 include collection and string limits.
+
+**Proposed amendment:**
+
+> Collection and string limits SHALL be deferred for the integer/boolean Wave 2 language because the
+> language has no collection or string values. The requirement becomes active when a later language
+> family adds those types. Wave 2 SHALL retain output, AST, step and call-depth limits.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-14 - Program test-count scope
+
+**Original requirement:** Requirement 9.3 requires 3–5 public examples and 10–20 total tests per
+challenge.
+
+**Proposed amendment:**
+
+> Program-construction challenges SHALL contain 3–5 public examples and 10–20 total tests, including
+> hidden edge cases. Single-query value tasks are a separate form and SHALL declare their answer-space,
+> query and verification rules; they SHALL not be described as satisfying the program-challenge count.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-15 - API, frontend, deployment and demo phase scope
+
+**Original requirements:** Requirements 13–19 describe API, frontend, deployment, demo and MVP phase
+contents.
+
+**Proposed amendment:**
+
+> API, frontend, deployment, cloud, authentication and demo requirements are assigned to a later
+> product phase. Wave 2 is a local design/benchmark-core phase and SHALL not claim those capabilities
+> are implemented. The historical Phase 1 checklist is planning context, not repository acceptance.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+### AM-16 - Raw parser workaround
+
+**Original requirement:** The frozen parser/interpreter contract remains normative for direct runtime
+callers.
+
+**Proposed decision:**
+
+> The benchmark SHALL use the surface translator on every benchmark execution path, including
+> submissions, hidden definitions, appended test calls and reference-generated surface programs. The
+> raw keyword-prefix parser ambiguity remains a documented Wave 1 limitation and is not claimed fixed.
+> A grammar word-boundary correction requires a later grammar-version decision.
+
+**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+
+
 
 These corrections do not approve normative amendments, but they are required before implementation.
 
@@ -457,14 +553,15 @@ The owner must explicitly decide each item:
 - `[ ]` AM-07 execution status migration
 - `[ ]` AM-08 response extraction
 - `[ ]` AM-09 sandbox scope
-- `[ ]` R3.1 50th-percentile hypothesis population, endpoint and non-circular comparison protocol
-- `[ ]` R3.2 grammar/token-diversity complexity hypothesis
-- `[ ]` R3.3 definition of 100 variants per difficulty
-- `[ ]` R4.1 bounded public-source/training-data verification protocol
-- `[ ]` R6.5 collection/string-limit disposition
-- `[ ]` R9.3 public-example and total-test-count policy
-- `[ ]` Requirements 13-19 API, frontend, deployment and demo phase scope
+- `[ ]` AM-10 research hypothesis protocol
+- `[ ]` AM-11 variant-count definition
+- `[ ]` AM-12 bounded novelty/public-data verification
+- `[ ]` AM-13 collection/string-limit scope
+- `[ ]` AM-14 program test-count scope
+- `[ ]` AM-15 API/frontend/deployment/demo phase scope
+- `[ ]` AM-16 raw-parser translator workaround
 - `[ ]` F1 definition-only runtime contract
+- `[ ]` F2 raw-parser translator boundary
 - `[ ]` F3 Python support and compatibility matrix
 - `[ ]` F5 structured execution-result contract
 - `[ ]` T-01 authoritative pair-group identity
