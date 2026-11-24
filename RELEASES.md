@@ -2,6 +2,29 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.9 — Exact Incremental Manifest Size Accounting and Final Acceptance
+- **Branch:** `main`
+- **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** `ead3ba6` exact manifest size accounting, `2bd89a1` Wave 2.2.8 release.
+- **Manifest size estimator:** Exact byte accounting matching canonical_bytes() with:
+  - UTF-8 encoding with ensure_ascii=True escaping
+  - ASCII chars: 1 byte, BMP chars: 6 bytes (\uXXXX), non-BMP chars: 12 bytes (surrogate pairs)
+  - Special character escaping (quotes, backslashes, control chars: +1 byte each)
+  - Early rejection before expensive operations (full serialization, environment reconstruction, hashing)
+  - No empirical fixed-overhead constants; exact per-element accounting
+- **Resource boundaries:**
+  - Surface translation: MAX_SOURCE_LENGTH=65,536 bytes (UTF-8)
+  - Surface profiles: MAX_MAPPINGS_PER_CATEGORY=100, key/target lengths=64
+  - Canonical JSON: MAX_NESTING_DEPTH=10, MAX_COLLECTION_SIZE=1000, MAX_STRING_LENGTH=65,536
+  - Derivation manifests: MAX_MANIFEST_SIZE=500KB
+- **Validation:** All limits enforced before expensive processing; clear error messages.
+- **Test coverage:** 1,224 tests passed. 21 new tests for exact byte accounting.
+- **Manifest integrity:** Wave 2.2.8 fixed-overhead calculation verified; Wave 2.2.9 exact byte accounting matches canonical_bytes().
+- **Known limitations:**
+  - Python 3.11–3.13: Unverified (Lark not installed in those environments)
+  - `invalid_program` boundary migration: Deferred
+  - Docker/WASM sandboxing: Required for official/untrusted execution
+
 ## Wave 2.2.3 — Input Boundary Verification and Final Acceptance
 - **Branch:** `main`
 - **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
