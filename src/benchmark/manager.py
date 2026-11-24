@@ -9,7 +9,7 @@ from src.language.generator import LanguageGenerator
 from src.language.seed import LanguageSeed, ValidationError
 from src.language.surface import SurfaceProfile
 
-from .canonical import canonical_bytes, canonical_json, sha256_hex
+from .canonical import canonical_bytes, canonical_json, sha256_hex, sha256_text
 from .environments import (
     ENV_SCHEMA_VERSION,
     GENERATOR_ALGORITHM_VERSION,
