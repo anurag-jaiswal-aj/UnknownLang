@@ -2,6 +2,23 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.1.1 — Runtime foundation acceptance closure
+- **Branch:** `main`
+- **Status:** Foundation closure complete for the bounded scope. Trusted-local development only.
+  Official and untrusted execution remain blocked without Docker/WASM.
+- **Commits:** `0c6ee6b` foundation implementation, `e2e9ce5` release record, `3baa7d6` F1/F5 closure correction.
+- **F1:** Definitions are declarations; the program returns the last expression value, or `None` when
+  there is no expression. Source-order visibility is preserved and production/reference parity passes.
+- **F2:** Token-aware surface translation is integrated through production facade, iterative evaluator
+  and reference evaluator when a surface profile is supplied. Raw direct callers remain exposed to the
+  frozen grammar limitation.
+- **F3:** Missing typing imports are fixed. Python 3.14.6 passes; Python 3.11–3.13 lack the installed
+  Lark dependency in this environment and are not claimed verified.
+- **F4/F5:** Runtime semantic version, strict identity helpers, conflict validation and structured result
+  diagnostics are implemented. The `invalid_program` boundary migration remains deferred.
+- **Validation:** 1,165 tests passed, exit code 0; focused foundation tests passed; `git diff --check` passed.
+- **Scope:** No benchmark harness, task system, scoring, providers, storage, replay or sandbox was started.
+
 ## Wave 2.1.0 — Runtime and environment foundation
 - **Branch:** `main`
 - **Status:** Foundation implementation only. Trusted-local development scope; official and untrusted
