@@ -388,7 +388,9 @@ callers.
 
 These corrections do not approve normative amendments, but they are required before implementation.
 
-### T-01 Pair identity
+## Part 3. Technical corrections
+
+
 
 Use `pair_group_id` as the sole authoritative field. A pair group contains exactly one control and at
 least one treatment. Its hash input is role-labelled and includes:
@@ -498,7 +500,9 @@ correlated guesses.
 
 
 
-### Alternative A - trusted-local-only Wave 2 pilot
+## Part 4. Security decision
+
+
 
 - watchdog subprocess may be used as a backstop;
 - no claim of sandbox security;
@@ -519,6 +523,27 @@ correlated guesses.
 before any official or untrusted model-generated execution.
 
 **Owner approval:** `[ ] Alternative A  [ ] Alternative B  [ ] Needs discussion`
+
+## Research register
+
+| ID | Question | Required evidence/method | Decision gate | Owner | Status |
+|---|---|---|---|---|---|
+| R1 | Does the family require adaptation? | preregistered held-out study with model population and endpoint | AM-10, AM-11 | owner + research lead | PENDING |
+| R2 | Are tasks calibrated for floor/ceiling? | pilot difficulty and model-performance data | AM-10 | owner + research lead | DEFERRED |
+| R3 | Are categories distinct? | category-level performance and factor analysis after pilot | AM-10 | owner + research lead | DEFERRED |
+| R4 | Family-level contamination | bounded source-search protocol and new-family policy | AM-12 | owner | PENDING |
+| R5 | Documentation versus inference | FULL_DOC versus EXAMPLES_ONLY controlled comparison | AM-10 | research lead | PENDING |
+| R6 | Equal difficulty across semantic configurations | balanced task-set calibration | AM-10, AM-11 | research lead | DEFERRED |
+| R7 | Required environment count/power | preregistered power analysis from pilot effects | AM-10 | research lead | DEFERRED |
+| R8 | Prompt sensitivity | multiple prompt-template pilot | AM-10 | research lead | DEFERRED |
+| R9 | Tokenizer effects | token-matched or measured surface controls | AM-02, AM-10 | research lead | PENDING |
+| R10 | Fairness of familiar-name permutations | paired familiar/pseudo pilot with signed effects | AM-02, AM-10 | owner + research lead | PENDING |
+| R11 | Error-class answers versus raw messages | human/model usability pilot | AM-07, AM-08 | research lead | DEFERRED |
+| R12 | Human baseline | approved human study protocol | AM-10 | owner + research lead | DEFERRED |
+| R13 | Interactive learning | bounded interactive protocol design and pilot | AM-15 | owner + research lead | DEFERRED |
+
+These statuses are planning statuses, not owner approvals. No research question is scientifically
+resolved by the Wave 1 regression suite or by documentation checks.
 
 ## Part 5. Research scope
 

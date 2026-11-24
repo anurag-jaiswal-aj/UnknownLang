@@ -309,6 +309,39 @@ digest = SHA256(input)
 Additional digest bytes use a counter suffix and unbiased rejection sampling. The protocol is part of
 the generator algorithm version and is covered by identity/reproducibility vectors.
 
+### D-013: Run lifecycle and scientific status - `DESIGN_DECISION`
+
+Run state, coverage and scientific status are separate fields. `complete` means every scheduled
+attempt has a record, including void records. `official` is a scientific status requiring complete
+coverage, approved sandbox class, matching conformance, zero prohibited voids and D10=0. `provisional`
+means a complete but non-official run. `invalid` means integrity or unrecoverable harness failure.
+Missing attempts keep coverage incomplete and allow resume while the run is running; existing attempt
+records are immutable. This contract is authoritative in `experiment-model.md`, section 2.1.
+
+### D-014: Three approval layers - `DESIGN_DECISION`
+
+Owner decisions are separated into engineering scope approval, provisional research-protocol approval,
+and post-pilot scientific-validity assessment. Approving the first two never establishes construct
+validity, statistical power, difficulty calibration or a general-reasoning claim.
+
+### D-015: Trust topology - `PROPOSED_AMENDMENT`
+
+The model adapter and provider process are trusted components outside candidate execution. Candidate
+programs run only inside the approved execution class. The adapter may access the local model endpoint
+when explicitly configured, but candidate execution has no network access. Prompts, responses and
+validated artifacts cross process boundaries as serialized data. Credentials are adapter-process
+configuration and never enter task, attempt or identity records. Official/untrusted execution requires
+Docker/WASM; watchdog-only execution is trusted-local and non-official.
+
+### D-016: Research register and decision status - `DESIGN_DECISION`
+
+Every research question has `question`, `required_evidence`, `method`, `decision_gate`, `owner` and
+`current_status`. Status vocabulary is `proposed`, `owner_approved`, `implemented`, `verified`,
+`deferred` or `blocked`. No design document may use `verified` for an unimplemented Wave 2 component,
+and no owner approval may be inferred from a passing Wave 1 suite.
+
+
+## Decision log
 
 | ID | Consequence |
 |---|---|
@@ -324,3 +357,7 @@ the generator algorithm version and is covered by identity/reproducibility vecto
 | D-010 | Ollama/mocks/files are the proposed zero-cost path; normative provider/storage requirements need amendment |
 | D-011 | Worked examples are regenerated and old IDs are not preserved |
 | D-012 | Derived randomness uses byte-framed SHA-256 and unbiased rejection sampling |
+| D-013 | Run state, coverage and scientific status are independent lifecycle dimensions |
+| D-014 | Engineering, provisional research, and post-pilot validity approvals are separate |
+| D-015 | Trusted adapter/provider and untrusted candidate execution have separate trust boundaries |
+| D-016 | Research questions have explicit evidence, gate, owner and status fields |

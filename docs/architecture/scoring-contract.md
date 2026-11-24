@@ -342,7 +342,9 @@ is measured or conservatively bounded.
 
 ## 8. Official eligibility
 
-A run is `complete` only when every scheduled attempt has a record. A run is `official` only when:
+A run is `complete` when every scheduled attempt has a record, including void records. A run may be
+`complete` and `provisional`; `complete` describes coverage, not scientific eligibility. A run is
+`official` only when `coverage=complete`, `scientific_status=official`, and:
 
 - coverage is one;
 - no harness fault, adapter void or wall-clock event exists;

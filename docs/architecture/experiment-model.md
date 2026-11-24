@@ -24,18 +24,38 @@ rerun the evaluation to the same result.
 Because the attempt id does not depend on the run, the same attempt in two runs can be compared
 record by record. That comparison is how determinism is checked (section 8).
 
-### 2.1 Run states
+### 2.1 Run lifecycle
 
-A run is `planned`, then `running`, then one of `complete`, `incomplete` or `aborted`.
+A run has three independent dimensions:
 
-* `complete`: every scheduled attempt has a scored record and the integrity checks passed.
-* `incomplete`: at least one attempt is `void` or missing. The run can be resumed. A resumed run
-  stays the same run and appends records.
-* `aborted`: stopped by the operator or by an unrecoverable `harness_fault`. Kept as evidence, never
-  deleted, and never ranked.
+```text
+run_state:        planned | running | complete | aborted
+coverage:         complete | incomplete
+scientific_status: official | provisional | invalid
+```
 
-A run that is not `complete` is never used in a ranking ([evaluation and scoring](evaluation-and-scoring.md),
-section 6.5).
+Legal combinations and transitions:
+
+| State | Coverage | Scientific status | Meaning |
+|---|---|---|---|
+| `planned` | `incomplete` | `provisional` | design exists; no attempt execution has started |
+| `running` | `incomplete` or `complete` | `provisional` | execution may resume; records are still being collected or verified |
+| `complete` | `complete` | `official` | every scheduled attempt has a record and all official gates pass |
+| `complete` | `complete` | `provisional` | every attempt is recorded, but void/resource events, incomplete scientific coverage or trusted-local execution prevent official ranking |
+| `aborted` | `incomplete` or `complete` | `invalid` | operator stop or unrecoverable integrity/harness failure; retained but never ranked |
+
+A run with missing attempts has `coverage=incomplete` and may resume while `run_state=running`. Resume
+appends records to the same immutable run identity; it does not rewrite existing attempt records. A run
+with all records present, including void attempts, has `coverage=complete` and `run_state=complete`,
+but it is `provisional` rather than official if any void/resource event or non-sandbox execution exists.
+A broken manifest, chain, artifact, conformance digest or task reference makes the run `invalid`, not
+merely provisional. An adapter-unavailable or resource-limit event is void and makes a complete run
+provisional; a missing record makes coverage incomplete. A harness fault is invalid unless the owner
+approves a separate recovery policy.
+
+Only `scientific_status=official` runs may be ranked. Provisional reports may be inspected but must not
+be compared as official results. These states are independent of attempt-level `ok`, `fail` and `void`.
+
 
 ## 3. Records
 
