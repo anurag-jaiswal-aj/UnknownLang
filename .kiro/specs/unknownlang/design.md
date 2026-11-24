@@ -1185,14 +1185,19 @@ services:
 
 ## 12. Phased Implementation
 
-### Phase 1: MVP (48 hours)
-- [x] Language Generator with seed support
-- [x] Interpreter Executor with timeout
-- [x] Challenge Generator with templates
-- [x] Basic API with endpoints
-- [x] Simple Frontend
-- [x] OpenAI Integration
-- [x] Demo Flow (live generation → challenge → evaluate)
+### Phase 1: MVP (48 hours) — historical draft status, not repository acceptance
+
+The original checklist below is retained as historical planning context. It is **not evidence that the
+items were implemented**. Current repository status is recorded in `README.md` and the Wave 2 owner
+package.
+
+- [x] Language Generator with seed support — implemented in Wave 1
+- [partial] Interpreter Executor with timeout — Wave 1 evaluator exists; process timeout/sandbox does not
+- [ ] Challenge Generator with templates — not implemented
+- [ ] Basic API with endpoints — not implemented
+- [ ] Simple Frontend — not implemented
+- [ ] OpenAI Integration — not implemented
+- [ ] Demo Flow (live generation → challenge → evaluate) — not implemented
 
 ### Phase 2: Post-Hackathon
 - [ ] Anthropic and Ollama adapters
@@ -1323,36 +1328,28 @@ Based on the revised architecture, Wave 1 tasks should be implemented in this or
 
 ---
 
-## 17. GO / NO-GO Decision
+## 17. GO / NO-GO Decision (historical draft status)
 
-### GO Criteria (All Must Pass)
+This section records the original design decision as historical context. It is not current acceptance
+for the repository or Wave 2. Current status is `NEEDS_CHANGES` in `RELEASES.md` and the owner package.
 
-| # | Criterion | Status |
-|---|-----------|--------|
-| 1 | Language identity is reproducible (seed + version → same ID) | ✅ PASS |
-| 2 | No generated Python interpreter code required | ✅ PASS |
-| 3 | Oracle uses independent evaluation path | ✅ PASS |
-| 4 | Resource limits are precisely defined and deterministic | ✅ PASS |
-| 5 | Semantic variation is formally specified and testable | ✅ PASS |
-| 6 | All module interfaces and dependencies are explicit | ✅ PASS |
-| 7 | No host I/O from interpreter without explicit virtual I/O | ✅ PASS |
-| 8 | Lark internals encapsulated, raw parser not exposed | ✅ PASS |
+### Original GO criteria
 
-### Remaining Concerns
+The original checklist remains useful as design rationale, but the following claims require current
+repository evidence before they can be marked PASS:
 
-- **Sandboxing**: The interpreter is NOT fully sandboxed. This is documented but users must understand that process-level isolation (Docker/WASM) is required for untrusted code.
-- **Shared bugs**: The independent oracle reduces but does not eliminate the risk of shared bugs between reference and production evaluators.
-- **Semantic test complexity**: Each semantic dimension requires specific test cases to verify behavior.
+- Language identity must match the approved Wave 2 identity contract, not only the legacy seed hash.
+- Oracle independence must state its shared parser/grammar limits.
+- Resource limits must include the approved status and sandbox contract.
+- Module interfaces must exist in the repository before implementation is claimed.
+- Semantic variation must be measured by the approved benchmark factors.
 
-### VERDICT: GO
+### Current disposition
 
-The architecture now meets all critical requirements:
-- ✅ Deterministic language identity (no timestamp in hash)
-- ✅ No generated Python interpreter code (semantic mapping instead)
-- ✅ Genuine oracle independence (different evaluation path, not just different class)
-- ✅ Deterministic resource limits (step counting, not signal.alarm)
-- ✅ Meaningful semantic variation (formally specified dimensions)
-- ✅ Separate difficulty model (challenge difficulty ≠ language difficulty)
-- ✅ Proper interface contracts (Lark encapsulated, stable APIs)
+The Wave 1 language runtime is tested and deterministic within its documented scope. Wave 2 benchmark
+architecture is proposed but not implemented. API, frontend, challenge generation, provider adapters,
+persistence, scoring and sandbox execution are not complete. Normative amendments remain pending owner
+approval.
 
-**The specification is approved for implementation.**
+**Current verdict: NO-GO for Wave 2 implementation and official benchmark execution until the owner
+approves the amendment package and the security/runtime gates pass.**

@@ -15,6 +15,7 @@ Baseline: Wave 1C.16.1, commit `642b2c8`, 1,142 tests passing.
 | [wave2-decisions.md](wave2-decisions.md) | Wave 2.0.2 consolidated decisions D-001 to D-012 |
 | [requirements-traceability.md](requirements-traceability.md) | Requirement-by-requirement compliance, deviations, deferrals and proposed amendments |
 | [scoring-contract.md](scoring-contract.md) | Normative metric, undefined-value, bootstrap and D8 contract |
+| [wave2-owner-approval.md](wave2-owner-approval.md) | Owner decision package; no decisions are marked approved |
 
 ## 1. Goals and non-goals
 

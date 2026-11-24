@@ -43,7 +43,7 @@ must reject a short-form collision rather than guess.
 | `environment_id` | `env_<sha256>` | `identity_core` of the environment record (section 3) | derivation, provenance, `runtime` cross-references |
 | `surface_id` | `<sha256>` | the surface profile object | nothing |
 | `task_id` | `task_<sha256>` | the task record | `task_id`, `verification`, `provenance`, `notes` |
-| `pair_id` | `pair_<sha256>` | pair-group template/version, category, difficulty dimensions, information condition, protocol variation, canonical query projection, sorted environment ids | nothing |
+| `pair_group_id` | `pair_<sha256>` | pair-group template/version, category, difficulty dimensions, information condition, protocol variation, canonical query projection, sorted environment ids | nothing |
 | `task_set_id` | `tset_<sha256>` | task-set schema, family version, complete blueprint/version/slots, sorted `(environment_id, split)` assignments, sorted task ids | nothing |
 
 `expected` is part of `task_id` (it is the claim). `verification` is not (it is the evidence for the
@@ -341,7 +341,7 @@ the [overview](wave2-overview.md), section 9.
 
 ```text
 { "kind": "standalone" }
-{ "kind": "paired", "pair_id": "pair_<sha256>", "role": "control" | "treatment",
+{ "kind": "paired", "pair_group_id": "pair_<sha256>", "role": "control" | "treatment",
   "varies": ["environment:semantic_config", "information_condition"] }
 ```
 
@@ -349,13 +349,17 @@ the [overview](wave2-overview.md), section 9.
 `environment:operator_meaning`, `environment:semantic_config`, `information_condition`,
 `example_policy`.
 
-A pair is valid only if the control task and every treatment task share `template`, `category`,
-the query program (or, where the environment changes the meaning of the query, a query program
-that translates to the same canonical program) and `difficulty.dimensions`, and differ in **exactly**
-the fields named in `varies`. The check is mechanical (gate T7).
-
-A `paired` task is scored like any other task. The pairing only controls how scores are
-compared (section 6 of [evaluation and scoring](evaluation-and-scoring.md)).
+A pair is valid only under the canonical comparison projection: exact query text for information/example
+variations; equal translated canonical queries for surface-name variation; permitted canonical
+divergence only for declared operator-meaning variation; and equal non-varied hashed fields. The
+check is mechanical (gate T7). A `paired` group has exactly one `control` member and one or more
+`treatment` members. The authoritative identity field is `pair_group_id`; `pair_id` is not a valid
+alias. Its hash projection is role-labelled and contains the pair schema version, template/version,
+category, difficulty dimensions, variation list, information/example conditions, canonical query
+projection, environment IDs and member task projections. Member projections exclude `task_id`,
+`verification`, `provenance`, `notes`, `pair_group_id` and `protocol.role` to avoid circular hashing.
+Members are sorted by role and then environment ID. A paired task is scored like any other task. The
+pairing only controls how scores are compared (section 6 of [evaluation and scoring](evaluation-and-scoring.md)).
 
 ### 6.3 Information conditions
 
@@ -543,12 +547,14 @@ Python or Lark version.
 
 ## 12. Worked examples
 
-These three tasks were built for this document with a throwaway script (not committed). Every
-expected result was produced by running the canonical program through **both** the production
-engine and the reference evaluator, and the two agreed in every case. Every identifier was computed
-with the rules in section 1. The surface translation was done by a throwaway implementation of
-section 4.2. They are illustrative. When the components are implemented, these examples are
-regenerated and become golden vectors (milestone M2.1).
+These three tasks are **illustrative architecture examples**, not normative golden fixtures. They were
+checked by throwaway probes during design review, but no committed Wave 2 task validator or fixture
+runner exists. Before implementation, regenerate them as committed golden fixtures with machine checks
+for T1-T15, TS1-TS4, T7-T9, pair-group identity, environment identity, public/hidden separation and
+expected-result verification.
+
+Task 3 currently contains five tests. Requirement 9.3 requires 10-20 total challenge tests, so this
+example remains outside that requirement until SD8 is approved or the fixture is expanded.
 
 ### 12.1 Environments
 
@@ -755,9 +761,12 @@ Capability: notice from evidence that evaluation order changed, and apply it. Th
 `treatment` member of a pair. The `control` member is the same query in environment `A` with
 `FULL_DOC`, whose verified expected result is the boolean false (short circuit skips the division).
 The treatment environment `B1` evaluates both operands eagerly, so the query raises a division error.
-The treatment shows the stale reference of environment `A` plus examples from `B1`. The second
-example `(quil aye (snel 1 0))` already shows the division error in `B1`, so the change is inferable
-from the evidence without any statement of change. Gate T8 holds: the two expected results differ.
+The treatment shows the stale reference of environment `A` plus truthful examples from `B1`. The
+public example `(zeph nay (prax 1 2))` is a type error under eager evaluation because the right
+operand is evaluated, while the stale short-circuit reference would predict `false`; the query then
+uses division by zero to test the same control-flow change with a distinct error class. Gate T8 holds:
+the two query expected results differ, and T9 is satisfied because the public results do not equal the
+query's `division_by_zero` result.
 
 ```json
 {
@@ -844,7 +853,7 @@ from the evidence without any statement of change. Gate T8 holds: the two expect
   },
   "protocol": {
     "kind": "paired",
-    "pair_id": "pair_f314ca0bf73be4f7c6bef7ae9a6b65d6bbe70566644e772ffa78f056a134b8ce",
+    "pair_group_id": "pair_f314ca0bf73be4f7c6bef7ae9a6b65d6bbe70566644e772ffa78f056a134b8ce",
     "role": "treatment",
     "varies": [
       "environment:semantic_config",
@@ -856,7 +865,7 @@ from the evidence without any statement of change. Gate T8 holds: the two expect
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_0d4bb9712e3e0ca2c4db96dc4391891ced221418b6f0cb49cf80a3ecbf5a0a3e",
+  "task_id": "task_6b83a433370dd5b9e37d256a76196e8936b2137f55d766b233ec7e5f4e82dc84",
   "template": {
     "id": "ctrl.short_circuit_probe",
     "version": 1

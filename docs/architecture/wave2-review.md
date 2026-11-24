@@ -562,4 +562,5 @@ Additional findings incorporated from the Wave 2.0.2 specialist review are:
 
 The architecture is more internally specified, but final approval remains blocked by the proposed
 normative amendments, the Docker/WASM requirement for security-compliant official runs, and the
-unimplemented runtime/provider prerequisites.
+unimplemented runtime/provider prerequisites. The owner decision package is
+[wave2-owner-approval.md](wave2-owner-approval.md).

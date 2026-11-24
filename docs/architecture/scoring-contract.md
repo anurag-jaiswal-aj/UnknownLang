@@ -66,6 +66,12 @@ Range `[0, 1]`, higher is better. If no category has a defined P1, `null`. The r
 category count and per-category values. P2 is a proposed research headline, not a replacement for the
 normative weighted score unless Requirement 10.4 is amended.
 
+For an official complete result, the task-set blueprint must require at least one eligible task in
+every required category and both dev/held-out splits. A missing category or split makes the run
+`provisional` or `invalid` according to the run policy; it must never silently shrink the macro-average
+population. Diagnostic P2 may still be computed over defined categories, with the omitted-category
+count and reason recorded.
+
 ### P3 Conditional adaptation loss
 
 A pair group contains one control task and one or more treatment tasks. For every task, use `s_t` from
@@ -91,8 +97,10 @@ not ranked. A model that fails all controls does not obtain a false zero loss: t
 there are no eligible groups. A scored-but-failed control is different from a void-only control because
 it has `s_ctrl = 0` and can be eligible if a treatment score exists.
 
-For `k = 1`, this reduces to the fraction of eligible control-passed groups whose averaged treatment
-failed. For `k > 1`, it uses sample pass rates and never rounds them to a binary value. If all treatment
+For `k = 1`, this uses every eligible group whose control and at least one treatment score are
+defined. It does **not** reduce to “control passed and treatment failed”: a scored-but-failed control
+has `s_ctrl = 0`, remains eligible, and contributes zero downside loss when the treatment succeeds.
+For `k > 1`, it uses sample pass rates and never rounds them to a binary value. If all treatment
 samples are void, the group is ineligible. Multiple treatments are averaged within the group, so one
 control contributes once.
 
@@ -131,7 +139,24 @@ order and the attempt-level pass rule remains all required tests.
 ## 4. D8 algorithm
 
 D8 uses the production evaluator for the candidate and the reference solution. The reference solution
-is a verified program, not the recursive reference evaluator's resource accounting.
+is a verified program, not the recursive reference evaluator's resource accounting. The trusted harness
+produces a validated `reference_cost_artifact` before scoring. It contains:
+
+```json
+{
+  "task_id": "task_...",
+  "reference_digest": "sha256:...",
+  "runtime_semantics_version": 1,
+  "tests": [{"test_id": "t1", "reference_steps": 11, "upper_bound_verified": true}],
+  "provenance": {"sources": ["production", "reference"], "agreement": true},
+  "artifact_sha256": "..."
+}
+```
+
+Scoring consumes this artifact and never reads private reference source code. The harness validates the
+artifact's task ID, reference digest, runtime version, test IDs, expected results, step counts and
+artifact hash. A disagreement or missing artifact makes D8 unavailable and the run provisional. The
+reference evaluator is not used for candidate or D8 resource accounting.
 
 For each test:
 
@@ -146,11 +171,26 @@ The predicate is required to be monotone. If either upper-bound check fails, the
 an explicit cause. Parsing and translation cost are not included in `steps_used`; wall-clock outcomes
 never count as passing.
 
-For each task, retain the full per-test vector. Compute the task ratio as the median of
-`submission_steps / reference_steps` over tests with positive reference steps. A submission threshold
-of zero gives ratio zero. Tests with zero reference steps are counted but omitted from the ratio. If no
-positive reference step exists, task ratio is null. D8 is the median of defined task ratios over
-eligible passed program tasks. The report stores test/task counts and zero-reference counts.
+For each task, retain the full per-test vector. A valid test may have zero reference steps:
+
+| submission steps | reference steps | ratio |
+|---:|---:|---|
+| 0 | 0 | null, counted in `zero_reference_tests` |
+| positive | 0 | null, counted in `zero_reference_tests` |
+| 0 | positive | 0 |
+| positive | positive | submission/reference |
+
+Zero-reference tests are valid evidence but cannot produce a finite ratio. They are retained in the
+vector and reported, but excluded from ratio aggregation. A task is eligible only when at least one
+valid test has a positive reference threshold. If all valid tests have zero reference steps, its ratio
+is `null` with `undefined_reason: "no_positive_reference_steps"`. A failed upper-bound check is not a
+zero-reference test; it is an unavailable threshold with an explicit cause.
+
+Compute the task ratio as the median of `submission_steps / reference_steps` over tests with positive
+reference steps. D8 is the median of defined task ratios over eligible passed program tasks. The report
+stores test/task counts, zero-reference counts, unavailable counts and the reference threshold vector.
+This is a conditional estimand: omitting zero-reference tests can bias comparisons if they cluster by
+task type, so the report must expose the fraction and owners must not compare D8 without it.
 
 Binary search takes at most `ceil(log2(global_max_steps + 1))` predicate evaluations after the upper
 bound is established. With `global_max_steps = 100000`, this is 17. This count is a bound on search
@@ -185,10 +225,29 @@ quantile(p) = linear interpolation at (N-1)*p
 return [quantile(.025), quantile(.975)]
 ```
 
-The bootstrap stream is counter-based, uses a specified byte encoding for each string/integer field,
-and does not use Python's `random` module. Duplicate units duplicate their observations. Paired model
-comparisons use the same draw and position sequence. Invalid replicates do not become zero and do not
-silently consume a valid result; the implementation records their count.
+The bootstrap stream uses this exact encoding for every selection position:
+
+```text
+fields = [task_set_id, metric_id, draw_index, position]
+bytes  = UTF-8(json.dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+digest = SHA256(bytes)
+```
+
+Rejection retries append `rejection_index` as a fifth JSON array field. Strings are UTF-8; integer
+values are JSON decimal integers; no platform-native binary encoding or delimiter concatenation is
+allowed. The digest is interpreted as a big-endian unsigned 256-bit integer. For `m = len(units)`:
+
+```text
+limit = floor(2^256 / m) * m
+while x >= limit:
+    rejection_index += 1
+    hash the five-field array
+selected_index = x mod m
+```
+
+The first rejection index is zero. `draw_index` ranges from zero through `B-1`; `position` ranges from
+zero through `len(units)-1`. Duplicate units duplicate their observations. Paired model comparisons use
+the same draw, position and rejection sequence.
 
 ### 5.3 Worked example
 
@@ -243,11 +302,19 @@ W = sum(raw_task_score_t * difficulty_weight_t)
     / sum(difficulty_weight_t)
 ```
 
-Weights must be positive integers, the weight function and version must be recorded in the task-set
-blueprint, and an empty task population or zero weight denominator is undefined. The default proposal is
-`difficulty_weight_t = 1` until pilot data justifies another function; this still reports the required
-formula rather than replacing it.
+Weights must be positive integers, and the weight function and version must be recorded in the
+ task-set blueprint. The default proposal is `difficulty_weight_t = 1` until pilot data justifies
+another function; this still reports the required formula rather than replacing it.
 
+Only tasks with `n_t > 0` are eligible. Void samples do not contribute to either the numerator or task
+weight. A task with both scored and void samples contributes its scored pass rate and retains its full
+difficulty weight. An all-void task contributes no weight and is reported in `void_task_count`.
+
+If any task is void, the run is provisional. An official complete run requires no void attempts and
+complete category/split coverage. A provisional run may display W for diagnostics, but it cannot be
+ranked beside an official run. If no task has a defined score, W is `null` with
+`undefined_reason: "no_scored_weighted_tasks"`. Missing attempts are not silently treated as zero and
+are recorded as `missing_attempt_count`.
 ## 8. Official eligibility
 
 A run is `complete` only when every scheduled attempt has a record. A run is `official` only when:

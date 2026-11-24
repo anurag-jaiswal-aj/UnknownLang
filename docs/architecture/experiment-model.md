@@ -102,6 +102,7 @@ One JSON object per line in `attempts.jsonl`.
 | `response.usage` | `{prompt_tokens, completion_tokens}` or `null` | no | adapter reported, often absent |
 | `extraction.status`, `extraction.method`, `extraction.candidates_found` | | yes | `candidates_found` greater than 1 is recorded because only the last candidate counts |
 | `submission.submission_sha256` | | yes | the extracted text. The artifact holds the text |
+| `execution.reference_cost_artifact_sha256` | | yes | digest of the trusted harness artifact used for D8; scoring reads the artifact, never private reference source |
 | `execution.tests` | list, empty for `value` tasks | yes | per test: `test_id`, `program_sha256` (digest of the translated canonical program that was run), `status`, `result` (`{kind, value}` or `{kind: "error", error_class}`), `failure_category`, `detail`. A `value` task executes nothing, so its list is empty |
 | `execution.limits` | object | yes | the limits applied |
 | `evaluation.outcome` | `ok` or `fail` or `void` | yes | |
