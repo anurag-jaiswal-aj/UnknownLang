@@ -2,6 +2,64 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0 — Benchmark execution architecture and design
+- **Branch:** `main`
+- **Status:** **Documentation only. Proposed and awaiting approval. No code was written or changed.**
+  The repository suite is unchanged: 1,142 passed, exit code 0.
+
+### Commits
+| Commit | Change |
+|---|---|
+| `545b999` | `docs/architecture/`: overview, task schema, evaluation and scoring, experiment model, roadmap, runtime findings, five ADRs |
+
+This ledger entry and the README pointer are committed after the commit above.
+
+### What the audit found
+The brief calls the languages procedurally generated. The audit of the actual code measured:
+- Only **6 distinct languages** exist. 36 seeds gave 36 `language_id` values and 6 distinct
+  grammar-and-semantics fingerprints. The grammar and the operator names never vary.
+- `language_id` does not depend on runtime behavior. It did not change when Waves 1C.15 and 1C.16
+  changed behavior.
+
+So the proposed design adds a **surface layer** (renamed keywords, operators and literals, optionally
+permuted meaning inside a type class, all user identifiers mangled) that runs before the unmodified
+runtime, and an environment identity built from what a model can observe.
+
+### Runtime findings (reported, not fixed; approval requested)
+| ID | Finding |
+|---|---|
+| F1 | A program ending in a definition returns `True` in production and `None` in the reference evaluator |
+| F2 | A call named like `ifx` with two arguments is parsed as `(if x ...)`, in both evaluators |
+| F3 | `src/language/canonical.py` raises `NameError` on Python 3.11 to 3.13, although `requires-python` is `>=3.11` |
+| F4 | `language_id` does not depend on runtime behavior |
+| F5 | No structured error kind and no step count on `ExecutionResult` |
+| F6 to F12 | Limitations and housekeeping, including an untracked file `tmp/mutate_if_metadata.py` left by Wave 1C.16.1 |
+
+### Decisions awaiting approval
+Approve the architecture and five ADRs; rule on F1, F3, F4, F5 and F2 handling; rule on ten
+specification deltas (SD1 to SD10), notably scoring resource-limit outcomes as 0 (SD5), adding surface
+profiles as a variation (SD6), and the extraction rule (SD10); permission to delete the stray file.
+The full list is in `docs/architecture/roadmap-wave2.md`, section 2.
+
+### Verification performed
+- Pre-flight: `main`, `origin/main` and the remote equal at `642b2c8`. Only `tasks.md` modified.
+- Read-only audit probes of the real runtime (variation across seeds, keyword-prefix parsing,
+  definition-last programs, structure quirks, error message families, parse scaling, `canonical.py`
+  on four Python versions).
+- Two environments and three tasks built from the real runtime. Every expected result was produced by
+  both evaluators, which agreed. Every identifier was recomputed from the stated hashing rules.
+- 109 automated documentation checks, all passing, including re-execution of every embedded result
+  against the live runtime. 21 planted defects, all caught, with an unmodified control that passed.
+- All 7 Mermaid diagrams parse with Mermaid 12.3.0 (parsed, not rendered).
+- An independent review returned FAIL with five findings. All five were corrected. The corrected text
+  was not reviewed again.
+
+### Not verified
+No implementation exists, no real model was run, the metrics are unvalidated hypotheses, difficulty and
+blueprint numbers are proposals, timings come from one machine, and only Python 3.14.6 with Lark 1.3.1
+was used. The benchmark measures behavior inside one small language family and makes no claim about
+general reasoning.
+
 ## Wave 1C.16.1 — Conditional metadata consistency
 
 - **Branch:** `main`

@@ -65,6 +65,11 @@ evaluation core), model adapters, benchmark scoring and metrics,
 a FastAPI backend, a React + Vite frontend, and SQLite persistence. FastAPI, uvicorn and httpx
 are declared in `pyproject.toml` but are not used by any current code.
 
+A proposed benchmark architecture for these items is in `docs/architecture/` (start with
+`wave2-overview.md`). It is a design only, **not yet approved**, and it differs from the list above in
+places: it proposes plain files in place of SQLite and defers the API and frontend. It also reports
+runtime findings that are not fixed (`runtime-findings.md`).
+
 ## Getting started
 
 Requires Python 3.11 or newer (`pyproject.toml`). Development and tests have been run on Python 3.14.
