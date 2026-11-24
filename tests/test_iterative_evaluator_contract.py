@@ -419,7 +419,7 @@ class TestEmptyProgram:
     def test_definition_order_matches_reference(self, evaluator, sc_lang):
         cases = [
             ("(def f (x) x)\n(def g (x) x)", None),
-            ("5\n(def f (x) x)", None),
+            ("5\n(def f (x) x)", 5),
             ("(def f (x) x)\n5", 5),
         ]
         for source, expected in cases:

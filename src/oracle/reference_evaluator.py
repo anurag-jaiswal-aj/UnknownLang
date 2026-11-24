@@ -224,6 +224,18 @@ class ReferenceEvaluator:
                 error_detail=detail,
                 steps_used=context.steps if 'context' in locals() else 0,
             )
+        except ZeroDivisionError as e:
+            return ExecutionResult(
+                status="error", error_message=f"Runtime error: {str(e)}",
+                error_kind="division_by_zero", error_detail="division_by_zero",
+                steps_used=context.steps if 'context' in locals() else 0,
+            )
+        except OverflowError as e:
+            return ExecutionResult(
+                status="error", error_message=f"Runtime error: {str(e)}",
+                error_kind="overflow", error_detail="overflow",
+                steps_used=context.steps if 'context' in locals() else 0,
+            )
         except Exception as e:
             return ExecutionResult(
                 status="error",
@@ -262,29 +274,18 @@ class ReferenceEvaluator:
 
     def _eval_program(self, tree: Tree, context: ReferenceContext, language_spec: LanguageSpec) -> Any:
         """Evaluate a program (list of statements/expressions)."""
-        # Process declarations first (defs), then evaluate expressions
-        declarations = []
-        expressions = []
-
-        for child in tree.children:
-            if isinstance(child, Tree):
-                if child.data == "def_decl":
-                    declarations.append(child)
-                else:
-                    expressions.append(child)
-            else:
-                expressions.append(child)
-
-        # Process declarations (function definitions)
+        # Process top-level forms in source order. Definitions update the function table but
+        # produce no value; expressions update the program result.
         functions = dict(context.functions)
-        for decl in declarations:
-            self._eval_def(decl, functions, context, language_spec)
-
-        # Evaluate expressions sequentially, return last value
         result = None
-        for expr in expressions:
-            result = self._eval(expr, context.with_functions(functions), language_spec)
-
+        for child in tree.children:
+            node = child
+            if isinstance(child, Tree) and child.data == "program_element":
+                node = child.children[0] if child.children else None
+            if isinstance(node, Tree) and node.data == "def_decl":
+                self._eval_def(node, functions, context, language_spec)
+            elif node is not None:
+                result = self._eval(node, context.with_functions(functions), language_spec)
         return result
 
     def _eval_def(self, tree: Tree, functions: dict[str, tuple[tuple[str, ...], Tree, ReferenceContext | None]],

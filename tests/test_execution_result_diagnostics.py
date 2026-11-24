@@ -37,6 +37,12 @@ def test_production_success_reports_step_and_depth_diagnostics():
     assert result.ast_depth_reached == 2
 
 
-def test_definition_only_program_has_no_value_or_steps():
+def test_division_error_has_structured_kind():
+    result = ExecutionEngine().execute("(div 1 0)", _lang())
+    assert result.status == "error"
+    assert (result.error_kind, result.error_detail) == ("division_by_zero", "division_by_zero")
+
+
+
     result = ExecutionEngine().execute("(def f (x) x)", _lang())
     assert (result.status, result.value, result.steps_used) == ("success", None, 0)

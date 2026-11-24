@@ -344,7 +344,7 @@ class IterativeEvaluator:
                 frame = frame_stack[-1]
                 self._process_frame(frame_stack, frame, context, language_spec)
 
-            if self._last_top_level_is_expression(tree) and context.result_stack:
+            if self._has_top_level_expression(tree) and context.result_stack:
                 return ExecutionResult(
                     status="success",
                     value=context.result_stack[-1],
@@ -352,18 +352,14 @@ class IterativeEvaluator:
                     steps_used=context.steps,
                     ast_depth_reached=deepest,
                 )
-            # A trailing declaration is not an expression result. This also makes
-            # expression-then-definition agree with the independent reference path.
-            if not self._last_top_level_is_expression(tree):
-                # Declarations are not expressions. Empty and definition-only programs
-                # therefore succeed with no value, matching the reference evaluator.
-                return ExecutionResult(
-                    status="success",
-                    value=None,
-                    output=context.output_buffer,
-                    steps_used=context.steps,
-                    ast_depth_reached=deepest,
-                )
+            # A program with no top-level expression has no value.
+            return ExecutionResult(
+                status="success",
+                value=None,
+                output=context.output_buffer,
+                steps_used=context.steps,
+                ast_depth_reached=deepest,
+            )
             return ExecutionResult(
                 status="error",
                 error_message="No result produced",
@@ -390,6 +386,14 @@ class IterativeEvaluator:
             return ExecutionResult(status="error", error_message=str(e), output=context.output_buffer,
                                    error_kind=kind, error_detail=detail, steps_used=context.steps,
                                    ast_depth_reached=deepest)
+        except ZeroDivisionError as e:
+            return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}", output=context.output_buffer,
+                                   error_kind="division_by_zero", error_detail="division_by_zero",
+                                   steps_used=context.steps, ast_depth_reached=deepest)
+        except OverflowError as e:
+            return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}", output=context.output_buffer,
+                                   error_kind="overflow", error_detail="overflow", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except Exception as e:
             return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}",
                                    output=context.output_buffer, error_kind="unknown",
@@ -399,18 +403,18 @@ class IterativeEvaluator:
             self._unwind_frames(frame_stack, context)
 
     @staticmethod
-    def _last_top_level_is_expression(tree: Tree) -> bool:
-        """Return whether the final top-level form is an expression."""
-        if not tree.children:
-            return False
-        last = tree.children[-1]
-        return (
-            isinstance(last, Tree)
-            and last.data == "program_element"
-            and bool(last.children)
-            and isinstance(last.children[0], Tree)
-            and last.children[0].data == "expr"
-        )
+    def _has_top_level_expression(tree: Tree) -> bool:
+        """Return whether the parsed program contains any top-level expression."""
+        for element in tree.children:
+            if (
+                isinstance(element, Tree)
+                and element.data == "program_element"
+                and element.children
+                and isinstance(element.children[0], Tree)
+                and element.children[0].data == "expr"
+            ):
+                return True
+        return False
 
     @staticmethod
     def _classify_error(message: str) -> tuple[str, str]:
