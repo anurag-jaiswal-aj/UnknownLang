@@ -2,6 +2,21 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.3 — Input Boundary Verification and Final Acceptance
+- **Branch:** `main`
+- **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** `74a4b31` input boundary fixes, `0b56d62` Wave 2.2.2 release, `4efe57e` Wave 2.2.0 foundation.
+- **Seed validation:** MAX_NAME_LENGTH=50, MAX_FEATURE_COUNT=10, MAX_FEATURE_LENGTH=30, MAX_SERIALIZED_SEED_SIZE=4KB.
+- **Surface translation:** UTF-8 byte limit (65,536 bytes), not character count.
+- **Manifest preflight:** Version checks before size validation.
+- **Resource boundaries:** All limits enforced before expensive processing with clear exceptions.
+- **Test coverage:** 1,190 tests passed. 6 new boundary tests for surface, canonical, manifest limits.
+- **Remaining limitations:**
+  - Python 3.11–3.13: Unverified (Lark not installed in those environments)
+  - `invalid_program` boundary migration: Deferred
+  - Docker/WASM sandboxing: Required for official/untrusted execution
+  - Persistent resolution: Placeholder implementation
+
 ## Wave 2.2.2 — Resource Boundary Enforcement and Conformance Coverage Closure
 - **Branch:** `main`
 - **Status:** Boundary enforcement implemented. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
