@@ -2,6 +2,21 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.0 — Environment Lifecycle and Deterministic Derivation Foundation
+- **Branch:** `main`
+- **Status:** Foundation implementation. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** `b9d916a` Wave 2.2 implementation, `7d6fd9d` Wave 2.1.2 release, `c298429` Wave 2.1.1 closure.
+- **Environment manager:** `src/benchmark/manager.py` with create_environment, validate_environment, verify_reconstruction, resolve_environment.
+- **Derivation manifests:** Versioned `DerivationManifest` schema for deterministic reconstruction and identity verification.
+- **Conformance corpus:** `tests/fixtures/conformance/` with runtime, surface translation, and derivation fixtures.
+- **Validation:** Manifest schema version, env schema, generator versions, runtime semantics, and identity all explicitly validated and rejected on mismatch.
+- **Test coverage:** 1184 tests passed (including 17 new conformance tests). `git diff --check` passed. Python 3.14.6 verified.
+- **Scope:** No benchmark harness, task system, scoring, adapters, storage, replay, frontend, or sandbox implemented.
+- **Remaining limitations:**
+  - Python 3.11–3.13: unavailable (Lark not installed)
+  - `invalid_program` boundary migration: deferred
+  - Docker/WASM sandboxing: required for official/untrusted execution
+
 ## Wave 2.1.2 — Runtime Semantics Versioning Correction
 - **Branch:** `main`
 - **Status:** Foundation closure. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
