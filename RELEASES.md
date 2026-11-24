@@ -2,6 +2,16 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.9 — Owner authorization recording and contract reconciliation
+- **Branch:** `main`
+- **Status:** **Owner-authorized scope recorded; implementation and official execution remain blocked.**
+- **Commit:** `d08b847`
+- **Authorization date:** `2026-11-24`, from the project-owner authorization message in the Wave 2.0.9 session. No owner identity or signature was recorded.
+- **Approved scope:** AM-01 through AM-16, F1 through F5 technical requirements, and T-01 through T-10 proposed contracts. Scientific validity remains deferred. Trusted-local pilots are permitted only as non-official validation; Docker/WASM remains required for official/untrusted execution.
+- **Validation:** documentation checks passed, Mermaid parsing passed, `git diff --check` passed, and the existing Wave 1 suite passed 1,142 tests with exit code 0.
+- **Scope:** Documentation and approved requirement-overlay records only. No source, tests or user-owned `tasks.md` changes.
+- **Decision:** Do not begin Wave 2.1 until the approved scope is implemented and its acceptance gates pass.
+
 ## Wave 2.0.7 — Decision register and contract gate closure
 - **Branch:** `main`
 - **Status:** **NEEDS_CHANGES / owner approval pending.** Lifecycle, approval-layer, research-register,
