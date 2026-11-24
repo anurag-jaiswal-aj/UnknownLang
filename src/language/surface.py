@@ -115,20 +115,23 @@ class TranslationResult:
 
 # Maximum source text length in UTF-8 bytes
 # 64KB is more than sufficient for any benchmark program
-MAX_SOURCE_LENGTH = 65_536
+MAX_SOURCE_LENGTH_BYTES = 65_536
 
 
 def _tokenize(source: str) -> list[str]:
     """Tokenize surface source text into canonical tokens.
 
     Validates source length before processing to prevent DoS attacks.
+    Uses UTF-8 byte length for accurate size limits.
 
     Raises:
-        SurfaceTranslationError: If source exceeds maximum length
+        SurfaceTranslationError: If source exceeds maximum length in bytes
     """
-    if len(source) > MAX_SOURCE_LENGTH:
+    source_bytes = len(source.encode("utf-8"))
+    if source_bytes > MAX_SOURCE_LENGTH_BYTES:
         raise SurfaceTranslationError(
-            f"Source text exceeds maximum length of {MAX_SOURCE_LENGTH} characters"
+            f"Source text exceeds maximum length of {MAX_SOURCE_LENGTH_BYTES} bytes "
+            f"({source_bytes} bytes, {len(source)} characters)"
         )
 
     tokens: list[str] = []
@@ -159,7 +162,7 @@ def _tokenize(source: str) -> list[str]:
 def to_canonical(source: str, profile: SurfaceProfile | Mapping[str, object]) -> TranslationResult:
     """Translate exact surface tokens to the frozen canonical Lisp grammar.
 
-    Validates source length before tokenization and profile structure before construction.
+    Validates source length (UTF-8 bytes) before tokenization and profile structure before construction.
 
     Raises:
         SurfaceTranslationError: If source exceeds maximum length or profile is invalid

@@ -21,6 +21,12 @@ VALID_FEATURES = frozenset({"arithmetic", "short_circuit", "recursion", "functio
 MIN_DIFFICULTY = 1
 MAX_DIFFICULTY = 5
 
+# Seed input limits
+MAX_NAME_LENGTH = 50
+MAX_FEATURE_COUNT = 10
+MAX_FEATURE_LENGTH = 30
+MAX_SERIALIZED_SEED_SIZE = 4096  # 4KB maximum serialized size
+
 
 class ValidationError(Exception):
     """Raised when seed validation fails."""
@@ -53,6 +59,8 @@ class LanguageSeed:
             raise ValidationError("name must be a non-empty string")
         if len(self.name.strip()) == 0:
             raise ValidationError("name cannot be whitespace-only")
+        if len(self.name) > MAX_NAME_LENGTH:
+            raise ValidationError(f"name must be at most {MAX_NAME_LENGTH} characters")
         
         # Validate syntax_style
         if self.syntax_style not in VALID_SYNTAX_STYLES:
@@ -66,18 +74,15 @@ class LanguageSeed:
             raise ValidationError("features must be a list or tuple")
         if len(self.features) == 0:
             raise ValidationError("features must contain at least one feature")
+        if len(self.features) > MAX_FEATURE_COUNT:
+            raise ValidationError(f"features must contain at most {MAX_FEATURE_COUNT} features")
         for feature in self.features:
             if not isinstance(feature, str) or len(feature.strip()) == 0:
                 raise ValidationError("Each feature must be a non-empty string")
-        
-        # Validate that semantic features (arithmetic, short_circuit, recursion, functions) are supported
-        # Other features are allowed for future extension
-        semantic_features = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
-        for feature in self.features:
-            if feature in semantic_features:
-                # This is a semantic feature, which is supported
-                pass
-            # Other features are allowed (for future extension or custom features)
+            if len(feature) > MAX_FEATURE_LENGTH:
+                raise ValidationError(
+                    f"Each feature must be at most {MAX_FEATURE_LENGTH} characters"
+                )
         
         # Validate difficulty
         if not isinstance(self.difficulty, int):
@@ -148,6 +153,7 @@ class LanguageSeed:
         2. No timestamps or runtime-specific values
         3. Stable ordering for all collections
         4. Include spec_version and algorithm_version for version-aware identity
+        5. Enforce MAX_SERIALIZED_SEED_SIZE limit
         """
         seed_dict = self.to_dict()
         # Exclude generated_at if present (should not be in valid seeds)
@@ -161,7 +167,13 @@ class LanguageSeed:
         
         # Use sorted keys and consistent formatting for determinism
         json_str = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-        return json_str.encode("utf-8")
+        result = json_str.encode("utf-8")
+        if len(result) > MAX_SERIALIZED_SEED_SIZE:
+            raise ValidationError(
+                f"Serialized seed exceeds maximum size of {MAX_SERIALIZED_SEED_SIZE} bytes "
+                f"({len(result)} bytes)"
+            )
+        return result
 
 
 def validate_seed(data: dict[str, Any]) -> None:
@@ -182,6 +194,8 @@ def validate_seed(data: dict[str, Any]) -> None:
         raise ValidationError("name must be a non-empty string")
     if len(data["name"].strip()) == 0:
         raise ValidationError("name cannot be whitespace-only")
+    if len(data["name"]) > MAX_NAME_LENGTH:
+        raise ValidationError(f"name must be at most {MAX_NAME_LENGTH} characters")
     
     # Validate syntax_style
     if data["syntax_style"] not in VALID_SYNTAX_STYLES:
@@ -195,18 +209,15 @@ def validate_seed(data: dict[str, Any]) -> None:
         raise ValidationError("features must be a list or tuple")
     if len(data["features"]) == 0:
         raise ValidationError("features must contain at least one feature")
+    if len(data["features"]) > MAX_FEATURE_COUNT:
+        raise ValidationError(f"features must contain at most {MAX_FEATURE_COUNT} features")
     for feature in data["features"]:
         if not isinstance(feature, str) or len(feature.strip()) == 0:
             raise ValidationError("Each feature must be a non-empty string")
-    
-    # Validate that semantic features are supported
-    # Other features are allowed for future extension
-    semantic_features = frozenset({"arithmetic", "short_circuit", "recursion", "functions"})
-    for feature in data["features"]:
-        if feature in semantic_features:
-            # This is a semantic feature, which is supported
-            pass
-        # Other features are allowed (for future extension or custom features)
+        if len(feature) > MAX_FEATURE_LENGTH:
+            raise ValidationError(
+                f"Each feature must be at most {MAX_FEATURE_LENGTH} characters"
+            )
     
     # Validate difficulty
     if not isinstance(data["difficulty"], int):

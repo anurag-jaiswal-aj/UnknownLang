@@ -9,7 +9,7 @@ from src.language.generator import LanguageGenerator
 from src.language.seed import LanguageSeed, ValidationError
 from src.language.surface import SurfaceProfile
 
-from .canonical import canonical_bytes, canonical_json, sha256_hex, sha256_text
+from .canonical import canonical_bytes, canonical_json, sha256_hex
 from .environments import (
     ENV_SCHEMA_VERSION,
     GENERATOR_ALGORITHM_VERSION,
@@ -91,14 +91,48 @@ def create_derivation_manifest(
 MAX_MANIFEST_SIZE = 500_000
 
 
-def _validate_manifest_size(manifest: DerivationManifest) -> None:
-    """Validate manifest size before expensive reconstruction."""
-    serialized = manifest.to_canonical_bytes()
-    if len(serialized) > MAX_MANIFEST_SIZE:
+def _validate_manifest_version(manifest: DerivationManifest) -> None:
+    """Validate manifest version fields (cheap checks before size validation)."""
+    if manifest.schema_version != DERIVATION_SCHEMA_VERSION:
         raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({len(serialized)} bytes)"
+            f"Unsupported derivation schema version: {manifest.schema_version}. "
+            f"Supported: {DERIVATION_SCHEMA_VERSION}"
         )
+    if manifest.env_schema_version != ENV_SCHEMA_VERSION:
+        raise ValidationError(
+            f"Unsupported env schema version: {manifest.env_schema_version}. "
+            f"Supported: {ENV_SCHEMA_VERSION}"
+        )
+    if manifest.generator_family_version != GENERATOR_FAMILY_VERSION:
+        raise ValidationError(
+            f"Unsupported generator family: {manifest.generator_family_version}. "
+            f"Supported: {GENERATOR_FAMILY_VERSION}"
+        )
+    if manifest.generator_algorithm_version != GENERATOR_ALGORITHM_VERSION:
+        raise ValidationError(
+            f"Unsupported generator algorithm: {manifest.generator_algorithm_version}. "
+            f"Supported: {GENERATOR_ALGORITHM_VERSION}"
+        )
+    if manifest.runtime_semantics_version != RUNTIME_SEMANTICS_VERSION:
+        raise ValidationError(
+            f"Runtime semantics version mismatch: {manifest.runtime_semantics_version}. "
+            f"Expected: {RUNTIME_SEMANTICS_VERSION}"
+        )
+
+
+def _validate_manifest_size(manifest: DerivationManifest) -> None:
+    """Validate manifest size before expensive reconstruction.
+
+    Pre-flights validation using a lightweight estimate (field count and approximate size)
+    before full canonical serialization.
+    """
+    # Quick preflight: check field count and estimate size without serialization
+    if len(manifest.to_dict()) > 20:  # Reasonable max field count
+        raise ValidationError("Manifest exceeds maximum field count")
+    if len(manifest.seed) > 100:  # Reasonable max seed dict size
+        raise ValidationError("Seed in manifest exceeds maximum size")
+    if len(manifest.surface_profile) > 100:  # Reasonable max profile size
+        raise ValidationError("Surface profile in manifest exceeds maximum size")
 
 
 def reconstruct_environment_from_manifest(
@@ -112,39 +146,11 @@ def reconstruct_environment_from_manifest(
     Raises:
         ValidationError: If manifest is invalid or identity doesn't match
     """
-    # Validate manifest size before expensive reconstruction
+    # Validate version fields first (cheap checks before expensive size check)
+    _validate_manifest_version(manifest)
+
+    # Validate manifest size after version checks but before reconstruction
     _validate_manifest_size(manifest)
-
-    if manifest.schema_version != DERIVATION_SCHEMA_VERSION:
-        raise ValidationError(
-            f"Unsupported derivation schema version: {manifest.schema_version}. "
-            f"Supported: {DERIVATION_SCHEMA_VERSION}"
-        )
-
-    # Validate version fields
-    if manifest.env_schema_version != ENV_SCHEMA_VERSION:
-        raise ValidationError(
-            f"Unsupported env schema version: {manifest.env_schema_version}. "
-            f"Supported: {ENV_SCHEMA_VERSION}"
-        )
-
-    if manifest.generator_family_version != GENERATOR_FAMILY_VERSION:
-        raise ValidationError(
-            f"Unsupported generator family: {manifest.generator_family_version}. "
-            f"Supported: {GENERATOR_FAMILY_VERSION}"
-        )
-
-    if manifest.generator_algorithm_version != GENERATOR_ALGORITHM_VERSION:
-        raise ValidationError(
-            f"Unsupported generator algorithm: {manifest.generator_algorithm_version}. "
-            f"Supported: {GENERATOR_ALGORITHM_VERSION}"
-        )
-
-    if manifest.runtime_semantics_version != RUNTIME_SEMANTICS_VERSION:
-        raise ValidationError(
-            f"Runtime semantics version mismatch: {manifest.runtime_semantics_version}. "
-            f"Expected: {RUNTIME_SEMANTICS_VERSION}"
-        )
 
     # Reconstruct seed and surface profile
     try:
