@@ -67,7 +67,7 @@ For `value` tasks S5 does not run the answer. The answer is a **prediction** com
 | `type_error` | S5 | 0 | `arithmetic`, `boolean`, `not`, `if` | a value of the wrong type reached an operation |
 | `arithmetic_error` | S5 | 0 | `division_by_zero`, `overflow` | |
 | `literal_range_error` | S5 | 0 | | an integer literal outside the signed 64-bit range |
-| `resource_limit` | S5 | 0 | `steps`, `ast_depth`, `call_depth`, `output`, `wall_clock` | a limit was exceeded. Reported on its own, never merged into `wrong_answer` |
+| `resource_limit` | S5 | void | `steps`, `ast_depth`, `call_depth`, `output`, `wall_clock` | a limit was exceeded; retained diagnostically and makes the run provisional |
 | `wrong_answer` | S6 | 0 | `wrong_value`, `wrong_kind`, `wrong_error_class`, `failed_tests` | the answer or the program's behavior differs from `expected` |
 
 For a `test_suite` task the attempt category is the category of the **first failing test in declared
@@ -179,12 +179,10 @@ correct idea with one slip or a table lookup of the public examples. A partial s
 these apart and rewards the second. Partial results are a diagnostic (D4), and the gap between public
 and hidden pass rates (D5) is the overfitting signal.
 
-Why resource limit is scored 0: requirements.md (Requirement 20, criterion 8) asks that a submission
-over a limit be "a distinct inconclusive status, not a failed/incorrect result". This design keeps
-it distinct, as `resource_limit`, and never merges it into `wrong_answer`. It does **not** exclude it
-from the score, because an exclusion would let a model avoid a wrong answer by writing an expensive
-program, which is the gaming this section exists to prevent. This is a specification delta that
-needs approval (overview, section 9, delta SD5).
+Resource-limit outcomes are distinct `void` results, not correctness failures. They are excluded from
+correctness numerators and denominators, retained as diagnostics, and make a run provisional. This
+follows Requirement 20, criterion 8 and requires the owner decision recorded as SD5/AM-06. An official
+run must satisfy the approved resource-limit policy; no resource outcome is silently converted to zero.
 
 ### 5.3 Diagnostic metrics
 
@@ -314,7 +312,7 @@ families, not more environments from this one.
 | Threat | Control |
 |---|---|
 | An invalid submission earning credit | Every stage failure scores 0 and is never excluded (section 1) |
-| Writing an expensive program to avoid a wrong answer | `resource_limit` scores 0 (5.2) |
+| Writing an expensive program to avoid a wrong answer | `resource_limit` is void, counted in coverage/resource diagnostics, and an official-run policy blocks incomplete or excessive-resource runs |
 | Hedging with several answers | Only the last `ANSWER:` line or the last code block counts (schema 7.1) |
 | Copying a public example | Answer not equal to any public result (T9) |
 | Hard-coding the shown examples | Hidden tests disjoint from public ones (T6); D5 shows the gap |
@@ -376,7 +374,7 @@ behavior is known by construction. These are mock adapters, and they need no net
 | `hardcoder` | returns a lookup table of the public examples | high public pass, near 0 hidden pass, D5 large |
 | `smallint` | answers a small integer from 0 to 10 for every value task (seeded) | its P1 on value tasks is reported as the **effective chance floor** and must stay at or below 10 percent. A higher value means the task set needs revision |
 | `syntax_only` | valid programs with wrong behavior | D1 = 1, P1 near 0 |
-| `bomber` | infinite recursion | `resource_limit` on every program task, score 0, D3 = 1 |
+| `bomber` | infinite recursion | `resource_limit` on every program task, score `void`, provisional run |
 | `garbage` | text with no answer | `extraction_failed` or `no_response`, score 0 |
 | `hedger` | prints several candidate answers | only the last is read, no gain over a single answer |
 
