@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from src.execution.types import RUNTIME_SEMANTICS_VERSION
-from src.language.generator import LanguageGenerator, LanguageSpec
+from src.language.generator import LanguageGenerator
 from src.language.seed import LanguageSeed, ValidationError
 from src.language.surface import SurfaceProfile
 
-from .canonical import canonical_bytes, canonical_json, sha256_hex
+from .canonical import canonical_bytes, canonical_json, sha256_hex, sha256_text
 from .environments import (
     ENV_SCHEMA_VERSION,
     GENERATOR_ALGORITHM_VERSION,
@@ -155,6 +155,70 @@ def reconstruct_environment_from_manifest(
     return env
 
 
+def _verify_manifest_with_hash_checks(manifest: DerivationManifest) -> EnvironmentRecord:
+    """Verify manifest reconstruction with explicit hash verification.
+
+    This function:
+    1. Reconstructs seed and surface profile from manifest
+    2. Rebuilds the environment using authoritative generation
+    3. Verifies the computed environment_id matches manifest
+    4. Recomputes and verifies individual hashes for integrity
+
+    Raises:
+        ValidationError: If any verification fails
+    """
+    # Reconstruct seed and surface profile
+    seed = LanguageSeed.from_dict(manifest.seed)
+    surface_profile = SurfaceProfile.from_dict(manifest.surface_profile)
+
+    # Rebuild the environment using the same inputs
+    env = build_environment(
+        seed.arithmetic,
+        seed.short_circuit,
+        manifest.surface_profile,
+    )
+
+    # Verify environment_id matches (computed identity verification)
+    if env.environment_id != manifest.environment_id:
+        raise ValidationError(
+            f"Reconstructed identity mismatch. Expected: {manifest.environment_id}, "
+            f"Got: {env.environment_id}"
+        )
+
+    # Reconstruct the spec to verify individual hashes
+    spec = LanguageGenerator().generate(
+        seed,
+        spec_version="1.0.0",
+        algorithm_version=GENERATOR_ALGORITHM_VERSION,
+    )
+
+    # Verify grammar hash
+    computed_grammar_sha256 = sha256_text(spec.grammar)
+    if computed_grammar_sha256 != manifest.grammar_sha256:
+        raise ValidationError(
+            f"Grammar hash mismatch. Expected: {manifest.grammar_sha256}, "
+            f"Got: {computed_grammar_sha256}"
+        )
+
+    # Verify semantic spec hash
+    computed_semantic_sha256 = sha256_hex(semantic_projection(spec))
+    if computed_semantic_sha256 != manifest.semantic_spec_sha256:
+        raise ValidationError(
+            f"Semantic spec hash mismatch. Expected: {manifest.semantic_spec_sha256}, "
+            f"Got: {computed_semantic_sha256}"
+        )
+
+    # Verify surface profile hash
+    computed_surface_sha256 = sha256_hex(dict(manifest.surface_profile))
+    if computed_surface_sha256 != manifest.surface_profile_sha256:
+        raise ValidationError(
+            f"Surface profile hash mismatch. Expected: {manifest.surface_profile_sha256}, "
+            f"Got: {computed_surface_sha256}"
+        )
+
+    return env
+
+
 class EnvironmentManager:
     """Environment lifecycle manager with deterministic reconstruction."""
 
@@ -268,9 +332,8 @@ class EnvironmentManager:
         Raises:
             ValidationError: If reconstruction fails or identity doesn't match
         """
-        reconstructed = reconstruct_environment_from_manifest(manifest)
-        self.validate_environment(reconstructed)
-        return reconstructed
+        # Perform full verification with hash checks
+        return _verify_manifest_with_hash_checks(manifest)
 
     def resolve_environment(self, environment_id: str) -> EnvironmentRecord | None:
         """Attempt to resolve an environment by its canonical identity.
