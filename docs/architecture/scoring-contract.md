@@ -206,7 +206,9 @@ policy belong to the environment's component. Connected components are sorted by
 
 P1, P2 and P4 use individual environment IDs as units. P3 uses pair components.
 
-### 5.2 Deterministic draws
+B is a mandatory report parameter. The Wave 2 default is `B = 2000`, and every interval record must
+store `B`, `valid_replicates`, `invalid_replicates`, `minimum_valid_replicates`, the interval method and
+bootstrap algorithm version. A draw count may not be selected implicitly or omitted from a report.
 
 ```text
 units = sorted(eligible units)
@@ -259,7 +261,7 @@ C2: [0.5]
 C3: [0.0, 0.0, 1.0]
 ```
 
-The observed group-weighted loss is `4/6`. A bootstrap draw `[C1, C1, C3]` expands to
+The observed group-weighted loss is `5/12`. A bootstrap draw `[C1, C1, C3]` expands to
 `[0,1,0,1,0,0,1]`, giving `3/7`. A draw `[C2,C2,C2]` gives `0.5`. A draw containing only components
 with no eligible groups is invalid, not zero. With fewer than two eligible components, no interval is
 reported.
@@ -315,6 +317,29 @@ complete category/split coverage. A provisional run may display W for diagnostic
 ranked beside an official run. If no task has a defined score, W is `null` with
 `undefined_reason: "no_scored_weighted_tasks"`. Missing attempts are not silently treated as zero and
 are recorded as `missing_attempt_count`.
+## 7.1 Composite chance floors
+
+A declared `chance_floor_ppm` is a probability for a complete task answer under a named baseline
+guessing policy. It is not automatically the product of marginal query floors.
+
+The product rule is valid only when all of the following are declared and justified:
+
+- component answers are independently sampled;
+- the baseline distribution is uniform or otherwise explicitly specified;
+- task correctness requires all component answers;
+- no shared prompt, correlated prior or deterministic answer strategy changes the joint distribution.
+
+If independence is not justified, the task must use an empirically measured seeded baseline or an
+explicit conservative upper bound for the joint answer space. The report stores the baseline policy,
+its version, the joint distribution method, component floors and the complete-task floor. A marginal
+floor must never be advertised as a guarantee against correlated guessing.
+
+## 7.2 Official weighted-score and chance-floor requirements
+
+An official task set must define positive weights, a versioned weight function, and a complete-task
+chance-floor policy. A composite task with uncertain joint probability is provisional until its floor
+is measured or conservatively bounded.
+
 ## 8. Official eligibility
 
 A run is `complete` only when every scheduled attempt has a record. A run is `official` only when:

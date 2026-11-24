@@ -489,12 +489,12 @@ The weighted score excludes all-void tasks from both numerator and weight denomi
 makes a run provisional; it cannot be ranked as official. Missing attempts are distinct from scored
 failures and are never assigned zero silently.
 
-### T-09 Bootstrap byte protocol
+### T-10 Composite chance floors
 
-Bootstrap selection hashes strict canonical JSON arrays `[task_set_id, metric_id, draw_index, position]`
-and appends `rejection_index` for retries. SHA-256 is interpreted as a big-endian unsigned integer and
-uses rejection sampling with `floor(2^256 / m) * m`. No platform-native encoding or Python random is
-permitted.
+Marginal per-query chance floors may be multiplied only when the baseline guessing distribution is
+explicitly independent and the task requires all component answers. Otherwise the owner must choose an
+empirical seeded baseline or conservative joint bound. A marginal floor is not a guarantee against
+correlated guesses.
 
 
 
@@ -567,6 +567,7 @@ The owner must explicitly decide each item:
 - `[ ]` T-01 authoritative pair-group identity
 - `[ ]` T-03 trusted reference-cost artifact boundary
 - `[ ]` official execution class and Docker/WASM policy
+- `[ ]` Composite chance-floor policy and correlated-guess baseline
 - `[ ]` research scope: narrow family or genuine grammar-family generation
 - `[ ]` historical `design.md` status corrections
 
