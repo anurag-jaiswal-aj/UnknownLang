@@ -2,6 +2,21 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.1.0 — Runtime and environment foundation
+- **Branch:** `main`
+- **Status:** Foundation implementation only. Trusted-local development scope; official and untrusted
+  execution remain blocked without Docker/WASM. Benchmark harness, task system, scoring, providers,
+  storage, replay and sandbox remain out of scope.
+- **Scope implemented:** F1 definition-only results, token-aware surface translation boundary, strict
+  benchmark canonicalization, runtime diagnostic fields with legacy serialization, environment identity
+  helpers, generator conflict detection and fail-closed Wave 2 feature validation.
+- **Validation:** 1,165 tests passed, exit code 0. Focused foundation tests: 219 passed, exit code 0.
+  Python 3.14.6 imports and tests passed. Python 3.11–3.13 interpreters were present but lacked the
+  installed Lark dependency, so their full matrix status is unavailable and not claimed passing.
+- **Commit:** `0c6ee6b`
+- **User work:** `.kiro/specs/unknownlang/tasks.md` remains untouched and unstaged.
+
+
 ## Wave 2.0.9 — Owner authorization recording and contract reconciliation
 - **Branch:** `main`
 - **Status:** **Owner-authorized scope recorded; implementation and official execution remain blocked.**
