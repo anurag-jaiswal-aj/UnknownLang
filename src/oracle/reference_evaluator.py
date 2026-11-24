@@ -12,7 +12,8 @@ Independence rules (enforced by tests/test_oracle_reference.py):
 
 Limits of the oracle:
 * It uses Python recursion for user-function calls, so it is only reliable for programs
-  nested well below Python's recursion limit (roughly 90 nested calls). Use it for
+  nested well below Python's recursion limit (measured: 75 nested calls under the default
+  limit, fewer from a deep stack such as a test runner). Use it for
   differential comparison on small programs, not as a production engine.
 * Its step and call-depth counters are legacy and are NOT the canonical resource-limit
   contract (see the iterative evaluator). Compare status and value, not step counts.
