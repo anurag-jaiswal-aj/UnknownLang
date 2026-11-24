@@ -2,6 +2,24 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.2 — Resource Boundary Enforcement and Conformance Coverage Closure
+- **Branch:** `main`
+- **Status:** Boundary enforcement implemented. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** `4efe57e` resource boundary implementation, `9ac4c12` Wave 2.2.1 acceptance, `833d588` Wave 2.2.0 foundation.
+- **Resource boundaries:**
+  - Surface translation: MAX_SOURCE_LENGTH=65,536 characters
+  - Surface profiles: MAX_MAPPINGS_PER_CATEGORY=100, key/target lengths=64
+  - Canonical JSON: MAX_NESTING_DEPTH=10, MAX_COLLECTION_SIZE=1000, MAX_STRING_LENGTH=65,536
+  - Derivation manifests: MAX_MANIFEST_SIZE=500KB
+- **Validation:** All limits enforced before expensive processing; clear error messages.
+- **Test coverage:** 1,190 tests passed (including 23 new resource boundary tests).
+- **Manifest integrity:** Wave 2.2.1 tamper detection verified (grammar, semantic spec, surface profile hashes).
+- **Conformance coverage:** F1-F5 requirements mapped to actual fixtures/tests.
+- **Known limitations:**
+  - Python 3.11–3.13: Unverified (Lark not installed in those environments)
+  - `invalid_program` boundary migration: Deferred
+  - Docker/WASM sandboxing: Required for official/untrusted execution
+
 ## Wave 2.2.1 — Environment Foundation Acceptance and Integrity Closure
 - **Branch:** `main`
 - **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
