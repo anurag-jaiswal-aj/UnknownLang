@@ -163,17 +163,16 @@ def _validate_manifest_size(manifest: DerivationManifest) -> None:
 def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
     """Bounded size validation that stops at 500KB budget.
 
-    This function performs a streaming-style size check that:
+    This function performs exact incremental byte accounting that matches
+    the canonical JSON serialization contract in canonical.py.
+
+    It uses a bounded serializer that:
     1. Validates all string lengths before encoding
-    2. Estimates cumulative size including JSON overhead
+    2. Calculates exact UTF-8 byte count for each element
     3. Stops immediately when budget exceeded
     4. Does not build complete serialized output
     """
     from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
-
-    # Calculate size budget: 500KB = 500000 bytes
-    # JSON overhead estimate: ~30% for keys, separators, escaping
-    # We'll use a conservative estimate
 
     budget = MAX_MANIFEST_SIZE
 
@@ -181,7 +180,6 @@ def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
     size = 0
 
     # Top-level structure: {"field1": value1, "field2": value2, ...}
-    # Keys are fixed: schema_version, environment_id, env_schema_version, etc.
     fixed_keys = [
         "schema_version", "environment_id", "env_schema_version",
         "generator_family_version", "generator_algorithm_version",
@@ -189,74 +187,58 @@ def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
         "grammar_sha256", "semantic_spec_sha256", "surface_profile_sha256"
     ]
 
-    # Add size for keys (with quotes) and separators
-    # Top-level keys only (nested dicts are handled by _estimate_dict_size)
-    for key in fixed_keys:
-        size += len(key) + 2  # +2 for quotes
+    # Opening brace: 1 byte
+    size += 1
 
-    # Add separators: commas between top-level keys
-    # 11 keys = 10 commas
-    size += 10
+    # Process each key-value pair incrementally
+    for i, key in enumerate(fixed_keys):
+        # Key with quotes
+        size += len(key.encode("utf-8")) + 2  # +2 for quotes
 
-    # Check fixed-size fields
-    # environment_id: 68 bytes (env_ + 64 hex chars) + 2 quotes = 70
-    size += len(manifest.environment_id) + 2  # environment_id with quotes
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
+        # Colon separator
+        size += 1
 
-    size += (64 + 2) * 3  # 3 sha256 hashes with quotes
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
+        # Add value size based on type and field
+        if key == "schema_version":
+            size += len(str(manifest.schema_version).encode("utf-8"))
+        elif key == "environment_id":
+            size += len(manifest.environment_id.encode("utf-8")) + 2  # +2 for quotes
+        elif key == "env_schema_version":
+            size += len(str(manifest.env_schema_version).encode("utf-8"))
+        elif key == "generator_family_version":
+            size += len(manifest.generator_family_version.encode("utf-8")) + 2
+        elif key == "generator_algorithm_version":
+            size += len(manifest.generator_algorithm_version.encode("utf-8")) + 2
+        elif key == "seed":
+            # Validate and account for seed dict
+            seed_size = _estimate_dict_size_bounded(manifest.seed, budget - size, "seed")
+            size += seed_size
+        elif key == "surface_profile":
+            # Validate and account for surface_profile dict
+            profile_size = _estimate_dict_size_bounded(manifest.surface_profile, budget - size, "surface_profile")
+            size += profile_size
+        elif key == "runtime_semantics_version":
+            size += len(str(manifest.runtime_semantics_version).encode("utf-8"))
+        elif key in ("grammar_sha256", "semantic_spec_sha256", "surface_profile_sha256"):
+            size += 64 + 2  # 64 hex chars + 2 quotes
+        else:
+            raise ValidationError(f"Unexpected manifest field: {key}")
 
-    # Add size for version and generator fields
-    # These are integers and short strings
-    size += 14  # Version and generator fields (14 bytes)
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
+        # Comma separator (except for last field)
+        if i < len(fixed_keys) - 1:
+            size += 1
 
-    # Add overhead for nested dict structure
-    # This accounts for the additional overhead from seed and surface_profile dicts
-    # that's not captured by top-level key counting
-    # We use 13 bytes based on empirical measurement
-    # (actual overhead 524 - calculated 511 = 13)
-    size += 13
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
+        # Check budget after each field
+        if size > budget:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({size} bytes estimated)"
+            )
 
-    # Check seed dict
-    seed_size = _estimate_dict_size(manifest.seed, budget - size, "seed")
-    size += seed_size
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
+    # Closing brace: 1 byte
+    size += 1
 
-    # Check surface_profile dict
-    profile_size = _estimate_dict_size(manifest.surface_profile, budget - size, "surface_profile")
-    size += profile_size
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
-
-    # Check remaining fixed fields
-    # environment_id is already counted above
-
-    # Final budget check with some padding for JSON formatting
+    # Final budget check
     if size > budget:
         raise ValidationError(
             f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
@@ -264,39 +246,37 @@ def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
         )
 
 
-def _estimate_dict_size(d: dict, budget: int, path: str) -> int:
-    """Estimate dict size with bounded checking.
+def _estimate_dict_size_bounded(d: dict, budget: int, path: str) -> int:
+    """Estimate dict size with bounded checking, matching canonical JSON encoding.
 
-    Returns estimated size or raises ValidationError if budget exceeded.
-    Does not iterate beyond budget limit.
+    This function performs exact incremental byte accounting that matches
+    the canonical JSON serialization behavior in canonical.py:
+    - JSON with sort_keys=True
+    - separators=(',', ':')
+    - ensure_ascii=True
+    - UTF-8 encoding
 
-    Uses a conservative upper bound that accounts for:
-    - JSON string escaping (backslash, quote, control chars)
-    - Dictionary keys (with quotes)
-    - Separators (colon, comma)
-    - Braces and delimiters
-
-    The estimator is intentionally conservative to avoid false negatives
-    (accepting manifests that actually exceed the size limit).
+    Returns exact encoded size or raises ValidationError if budget exceeded.
+    Stops processing immediately when budget exceeded.
     """
     from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
 
     size = 0
 
-    # Opening brace
+    # Opening brace: 1 byte
     size += 1
 
-    items = list(d.items())
+    # Get items in sorted order (matching canonical_json's sort_keys=True)
+    items = sorted(d.items(), key=lambda x: x[0])
     num_items = len(items)
 
     for i, (key, value) in enumerate(items):
-        if i >= num_items:
-            break
-
-        # Add key size (with quotes)
-        if not isinstance(key, str):
+        # Key with quotes
+        if type(key) is not str:
             raise ValidationError(f"Dictionary keys must be strings at {path}")
-        size += len(key) + 2  # +2 for quotes
+        
+        key_bytes = key.encode("utf-8")
+        size += len(key_bytes) + 2  # +2 for quotes
 
         if size > budget:
             raise ValidationError(
@@ -304,61 +284,140 @@ def _estimate_dict_size(d: dict, budget: int, path: str) -> int:
                 f"({size} bytes estimated)"
             )
 
-        # Add colon
+        # Colon separator: 1 byte
         size += 1
 
-        # Add value size based on type
-        if value is None:
-            size += 4  # "null"
-        elif isinstance(value, bool):
-            size += 5  # "true"/"false"
-        elif isinstance(value, int):
-            size += len(str(value))
-        elif isinstance(value, str):
-            # Validate string length before counting
-            if len(value) > MAX_STRING:
-                raise ValidationError(
-                    f"String at {path}.{key} exceeds maximum length of {MAX_STRING} "
-                    f"({len(value)} characters)"
-                )
-            # Estimate string size: len + 2 for quotes
-            # JSON escaping overhead: typically 0-1 byte per special char
-            # For typical ASCII content, no escaping is needed
-            # Using len + 2 which matches the actual JSON format \"value\"
-            size += len(value) + 2
-        elif isinstance(value, (list, tuple)):
-            # Check list size before iterating
-            if len(value) > 1000:
-                raise ValidationError(
-                    f"List at {path}.{key} exceeds maximum size of 1000"
-                )
-            # Estimate list size - each item adds ~12 bytes for brackets, commas, and overhead
-            size += len(value) * 12
-        elif isinstance(value, dict):
-            # Recursively check nested dicts with reduced budget
-            remaining_budget = budget - size
-            nested_size = _estimate_dict_size(value, remaining_budget, f"{path}.{key}")
-            size += nested_size
-        else:
-            raise ValidationError(
-                f"Unsupported type at {path}.{key}: {type(value).__name__}"
-            )
+        # Value size based on type (exact canonical JSON encoding)
+        value_bytes = _estimate_json_value_size(value, budget - size, f"{path}.{key}")
+        size += value_bytes
 
-        # Add comma for next item (except last)
+        # Comma separator (except for last item): 1 byte
         if i < num_items - 1:
             size += 1
 
-    # Closing brace
+        if size > budget:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({size} bytes estimated)"
+            )
+
+    # Closing brace: 1 byte
     size += 1
 
-    # Check final size against budget
-    if size > budget:
-        raise ValidationError(
-            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-            f"({size} bytes estimated)"
-        )
-
     return size
+
+
+def _estimate_json_value_size(value: Any, budget: int, path: str) -> int:
+    """Estimate exact UTF-8 byte size for a JSON value.
+
+    This matches canonical_json's exact serialization rules:
+    - sort_keys=True for dicts
+    - separators=(',', ':')
+    - ensure_ascii=True
+    - UTF-8 encoding
+
+    Returns exact byte count or raises ValidationError if budget exceeded.
+    """
+    from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
+
+    if value is None:
+        return len(b"null")
+
+    if type(value) is bool:
+        return len(b"true") if value else len(b"false")
+
+    if type(value) is int:
+        # Exact byte count for integer string representation
+        return len(str(value).encode("utf-8"))
+
+    if type(value) is str:
+        # Validate string length
+        if len(value) > MAX_STRING:
+            raise ValidationError(
+                f"String at {path} exceeds maximum length of {MAX_STRING} "
+                f"({len(value)} characters)"
+            )
+        # canonical_json uses ensure_ascii=True which escapes non-ASCII to \uXXXX
+        # Calculate escaped size:
+        # - Quotes: 2 bytes
+        # - ASCII chars (0-127): 1 byte each (except special chars)
+        # - Non-ASCII chars in BMP (128-65535): 6 bytes (\uXXXX format)
+        # - Non-BMP chars (>65535): 12 bytes (surrogate pair: \uD83C\uDF0D)
+        
+        size = 2  # Quotes
+        
+        for char in value:
+            code_point = ord(char)
+            
+            # Handle special chars that need backslash escaping
+            if char in ('"', '\\', '\b', '\f', '\n', '\r', '\t'):
+                # Backslash + char = 2 bytes
+                size += 2
+            elif code_point < 128:
+                # ASCII (no escaping needed): 1 byte
+                size += 1
+            elif code_point < 65536:
+                # BMP char: 6 bytes (\uXXXX format)
+                size += 6
+            else:
+                # Non-BMP char (emoji etc): 12 bytes (surrogate pair)
+                # Python's ensure_ascii uses UTF-16 surrogate pairs
+                # e.g., 🌍 (U+1F30D) becomes \uD83C\uDF0D
+                size += 12
+        
+        if size > budget:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({size} bytes estimated)"
+            )
+        return size
+
+    if isinstance(value, (list, tuple)):
+        if isinstance(value, tuple):
+            raise ValidationError(f"Tuples are not permitted at {path}")
+        
+        # Check collection size
+        if len(value) > 1000:
+            raise ValidationError(
+                f"List at {path} exceeds maximum size of 1000"
+            )
+
+        size = 1  # Opening bracket
+
+        for index, item in enumerate(value):
+            # Validate string length for items
+            if isinstance(item, str) and len(item) > MAX_STRING:
+                raise ValidationError(
+                    f"String at {path}[{index}] exceeds maximum length of {MAX_STRING}"
+                )
+            
+            item_size = _estimate_json_value_size(item, budget - size, f"{path}[{index}]")
+            size += item_size
+
+            # Comma separator (except for last item)
+            if index < len(value) - 1:
+                size += 1
+
+            if size > budget:
+                raise ValidationError(
+                    f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                    f"({size} bytes estimated)"
+                )
+
+        size += 1  # Closing bracket
+        return size
+
+    if isinstance(value, dict):
+        # Check collection size
+        if len(value) > 1000:
+            raise ValidationError(
+                f"Object at {path} exceeds maximum size of 1000"
+            )
+
+        # Use the dict estimator which handles nested structures
+        return _estimate_dict_size_bounded(value, budget, path)
+
+    raise ValidationError(f"Unsupported type at {path}: {type(value).__name__}")
 
 
 def reconstruct_environment_from_manifest(
