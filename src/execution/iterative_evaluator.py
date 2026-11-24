@@ -28,18 +28,22 @@ from src.language.generator import LanguageSpec
 from src.language.semantics import BUILTIN_OPERATIONS
 
 
-# Constants for 64-bit signed integer bounds
-MIN_INT64: int = -9223372036854775808
-MAX_INT64: int = 9223372036854775807
-
-
-# Default maximum call depth
-DEFAULT_MAX_CALL_DEPTH: int = 100
-
-# Default resource limits
-DEFAULT_MAX_STEPS: int = 100_000
-DEFAULT_MAX_AST_DEPTH: int = 1_000
-DEFAULT_MAX_OUTPUT_BYTES: int = 1_048_576  # 1 MB
+# Shared data types and constants live in src.execution.types (no project imports there).
+# Names are re-exported here, so existing imports from this module keep working.
+from src.execution.types import (  # noqa: F401  (re-exports)
+    DEFAULT_MAX_AST_DEPTH,
+    DEFAULT_MAX_CALL_DEPTH,
+    DEFAULT_MAX_OUTPUT_BYTES,
+    DEFAULT_MAX_STEPS,
+    MAX_INT64,
+    MIN_INT64,
+    AstDepthExceeded,
+    ExecutionError,
+    ExecutionResult,
+    OutputLimitExceeded,
+    RecursionLimitExceeded,
+    StepLimitExceeded,
+)
 
 # Grammar rules that are semantic expression nodes. These are the ONLY nodes
 # that (a) count toward AST depth and (b) are charged one execution step when
@@ -1119,50 +1123,6 @@ class IterativeEvaluator:
             raise ExecutionError(f"eq requires 2 arguments, got {len(args)}")
         
         return args[0] == args[1]
-
-
-# Re-export exceptions for convenience
-class ExecutionError(Exception):
-    """Base exception for execution errors."""
-    pass
-
-
-class StepLimitExceeded(ExecutionError):
-    """Raised when execution exceeds max_steps."""
-    pass
-
-
-class AstDepthExceeded(ExecutionError):
-    """Raised when AST depth exceeds max_ast_depth."""
-    pass
-
-
-class OutputLimitExceeded(ExecutionError):
-    """Raised when output size exceeds max_output_bytes."""
-    pass
-
-
-class RecursionLimitExceeded(ExecutionError):
-    """Raised when call depth exceeds max_call_depth."""
-    pass
-
-
-@dataclass(frozen=True)
-class ExecutionResult:
-    """Result of program execution."""
-    status: str
-    value: Any = None
-    output: str = ""
-    error_message: str = ""
-    
-    def to_dict(self) -> dict[str, Any]:
-        """Return result as dictionary."""
-        return {
-            "status": self.status,
-            "value": self.value,
-            "output": self.output,
-            "error_message": self.error_message,
-        }
 
 
 @dataclass
