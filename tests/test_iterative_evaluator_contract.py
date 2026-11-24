@@ -8,7 +8,7 @@ Covers, independently of the evaluator's own frame loop:
     attempt is not.
   * Signed 64-bit arithmetic boundaries in all three overflow modes.
   * Parse-error handling.
-  * Reproducible differential parity against the reference ExecutionEngine, with the
+  * Reproducible differential parity against the independent ReferenceEvaluator (src/oracle), with the
     known reference defect isolated (see KNOWN_REFERENCE_DEFECT).
 
 Decisions recorded by the user for this wave:
@@ -22,7 +22,7 @@ Decisions recorded by the user for this wave:
 import pytest
 from lark import Tree
 
-from src.execution.engine import ExecutionEngine
+from src.oracle.reference_evaluator import ReferenceEvaluator
 from src.execution.iterative_evaluator import IterativeEvaluator
 from tests.test_iterative_evaluator_resource_limits import _lang, run_limited
 
@@ -407,7 +407,7 @@ class TestEmptyProgram:
         assert ctx.steps == 0 and ctx.call_depth == 0
 
     def test_empty_source_matches_reference_engine(self, evaluator, sc_lang):
-        ref = ExecutionEngine().execute("", sc_lang)
+        ref = ReferenceEvaluator().execute("", sc_lang)
         ours = evaluator.execute("", sc_lang)
         assert (ours.status, ours.value) == (ref.status, ref.value) == ("success", None)
 
@@ -541,7 +541,7 @@ class TestDifferentialParity:
         mismatches = []
         for program in PARITY_CORPUS:
             ours = IterativeEvaluator().execute(program, lang)
-            ref = ExecutionEngine().execute(program, lang)
+            ref = ReferenceEvaluator().execute(program, lang)
             if _key(ours) != _key(ref):
                 mismatches.append((program, _key(ours), _key(ref)))
         assert not mismatches, "\n".join(map(repr, mismatches))
@@ -558,9 +558,9 @@ KNOWN_REFERENCE_DEFECT = [f"(div {INT64_MIN} -1)"]
 
 
 class TestKnownReferenceEngineDefect:
-    """KNOWN DEFECT (ExecutionEngine, src/execution/engine.py `_apply_division`):
+    """KNOWN DEFECT (ReferenceEvaluator, src/oracle/reference_evaluator.py `_apply_division`):
     INT64_MIN / -1 returns +2**63 in wraparound and saturating modes. That value is not
-    a signed 64-bit integer. Only error-on-overflow handles the case. ExecutionEngine is
+    a signed 64-bit integer. Only error-on-overflow handles the case. ReferenceEvaluator is
     out of scope for this milestone and has NOT been changed.
 
     These are strict xfails: they document the defect today and will fail loudly (XPASS)
@@ -569,14 +569,14 @@ class TestKnownReferenceEngineDefect:
     @pytest.mark.xfail(strict=True, reason="Known reference defect: out-of-range INT64_MIN / -1")
     @pytest.mark.parametrize("mode", ["wraparound", "saturating"])
     def test_reference_result_should_be_in_int64_range(self, mode):
-        r = ExecutionEngine().execute(KNOWN_REFERENCE_DEFECT[0], _lang(arithmetic=mode))
+        r = ReferenceEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], _lang(arithmetic=mode))
         assert INT64_MIN <= r.value <= INT64_MAX
 
     @pytest.mark.parametrize("mode", ["wraparound", "saturating"])
     def test_defect_is_present_and_confined_to_reference(self, mode):
         """Pins the exact discrepancy so any change in either engine is noticed."""
         lang = _lang(arithmetic=mode)
-        ref = ExecutionEngine().execute(KNOWN_REFERENCE_DEFECT[0], lang)
+        ref = ReferenceEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], lang)
         ours = IterativeEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], lang)
         assert ref.value == 2 ** 63
         assert ours.value == (INT64_MIN if mode == "wraparound" else INT64_MAX)
