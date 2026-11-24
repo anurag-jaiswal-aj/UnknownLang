@@ -1,13 +1,14 @@
 # Wave 2 Requirements Traceability
 
-Status: **Proposed. Approval required for every `DEVIATES`, `DEFERS`, `CONFLICTS` and
-`BLOCKED` entry.** No normative requirements file was modified.
+Status: **Wave 2.0.9 owner-authorized scope recorded on 2026-11-24.** This does not mean
+implemented or verified. Requirements not covered by the authorization remain pending, deferred or
+blocked. No normative requirements file was changed outside the approved amendment overlay.
 
 This matrix compares the actual normative documents with the Wave 2 proposal. `DESIGN` means the
 architecture describes a path to satisfy the requirement but code is not yet implemented. `PARTIAL`
 means some criteria are covered and others are not. `DEVIATES` means the proposal intentionally differs
-and needs an amendment. `DEFERS` means the work is outside Wave 2 and remains open. `BLOCKED` means an
-official run cannot claim compliance until a prerequisite exists.
+and has an owner-authorized amendment overlay. `DEFERS` means the work is outside Wave 2 and remains
+open. `BLOCKED` means an official run cannot claim compliance until a prerequisite exists.
 
 ## 1. Requirement matrix
 
@@ -34,7 +35,22 @@ official run cannot claim compliance until a prerequisite exists.
 | R19 | 48-hour MVP and phase contents | `CONFLICTS` | Original design marks API/frontend/OpenAI/demo complete, but the actual repository does not contain them and Wave 2 defers them. Correct historical status or formally re-scope phases |
 | R20 | Versioned execution, seeds, leakage, fairness, generalization, resource status, audit trail, sandbox | `PARTIAL / BLOCKED` | Versioning, seeds, leakage controls and audit trail are designed. Resource-limit scoring and sandboxing deviate. Approve D-005/D-009 and amend R20.8/20.10 if needed |
 
-## 2. Exact amendment proposals
+## 1.1 Wave 2.0.9 authorization status
+
+Effective date: **2026-11-24**. The owner authorization is the current Wave 2.0.9 Kiro message.
+No owner identity or signature is recorded.
+
+The following amendments are now `owner_approved` for scope interpretation, but remain
+`implemented=false` and `verified=false`: AM-01 through AM-16. F1 through F5 are owner-approved
+technical requirements, not completed fixes. T-01 through T-10 are owner-approved proposed contracts,
+not implementations. The authorization does not approve scientific validity, official security,
+provider availability, storage implementation or Wave 2.1 start.
+
+Requirements 13-19 are owner-approved as deferred product scope, not satisfied capabilities. R1-R13
+retain their research statuses in the owner package. Resource, status, provider, storage, sandbox and
+identity requirements remain subject to the implementation gates described below.
+
+
 
 These are proposed wording changes, not applied changes.
 

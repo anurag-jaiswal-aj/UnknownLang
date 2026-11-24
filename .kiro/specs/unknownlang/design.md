@@ -1353,3 +1353,22 @@ approval.
 
 **Current verdict: NO-GO for Wave 2 implementation and official benchmark execution until the owner
 approves the amendment package and the security/runtime gates pass.**
+
+## 18. Wave 2.0.9 approved scope overlay
+
+Effective date: **2026-11-24**. The owner authorization source is the current Wave 2.0.9 Kiro
+message. This overlay records scope and requirement interpretation only; it does not claim implementation
+or verification.
+
+- Wave 2 uses the existing integer/boolean/function language family and the approved surface-profile
+  adaptation scope. It does not claim entirely new grammar families or broad general reasoning.
+- Weighted correctness is required; unweighted held-out accuracy is a separate research metric.
+- Mocks are first, Ollama is the first real provider, and OpenAI-compatible transport is optional/later.
+- Files/hash chains are the proposed source of truth; SQLite is a later derived index.
+- Resource/infrastructure outcomes are void for correctness and provisionalize runs.
+- `invalid_program` is the approved target boundary status, with a versioned legacy migration.
+- Trusted-local pilots are allowed; official/untrusted execution remains blocked until Docker/WASM.
+- Research validity remains deferred until pilot evidence.
+
+The exact amendments and owner status are recorded in `docs/architecture/wave2-owner-approval.md` and
+`docs/architecture/requirements-traceability.md`. An approved scope is not an implemented feature.

@@ -1,12 +1,13 @@
-# Wave 2.0.2 Decision Register
+# Wave 2.0.9 Decision Register
 
-Status: **Proposed closure. Approval is still required for normative amendments and security scope.**
-No production implementation is authorized by this document.
+Status: **Owner-authorized scope recorded on 2026-11-24. Implementation and verification remain pending.**
+The authorization source is the current Wave 2.0.9 Kiro message; no owner identity or signature is
+recorded. No production implementation is authorized by this document.
 
 This register is authoritative for the Wave 2 design. When an older Wave 2 document conflicts with
 this register or [scoring-contract.md](scoring-contract.md), the older wording is superseded. The
-normative requirements and original design are not changed by this document. Where they conflict with
-the proposal, the register says whether an amendment is required.
+normative requirements and original design are changed only by the approved amendment overlay in
+`requirements.md`; no implementation status is implied by `owner_approved`.
 
 ## Decision status
 

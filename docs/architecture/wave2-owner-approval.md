@@ -1,7 +1,57 @@
 # Wave 2 Owner-Approval Package
 
-Status: **Pending owner decisions. Nothing in this package is approved.**
-Baseline: `cad3fd7`, Wave 2.0.2.
+Status: **Owner-authorized scope recorded on 2026-11-24. Implementation and verification remain pending.**
+Baseline: Wave 2.0.7, commit `94dea26`.
+
+## Owner authorization record
+
+- **Authorization source:** the project-owner authorization message for Wave 2.0.8 in the current Kiro session.
+- **Effective date:** `2026-11-24`.
+- **Owner identity:** not recorded; the authorization source is the current owner message only.
+- **Authorized scope:** AM-01 through AM-16, F1 through F5 as technical implementation requirements,
+  and T-01 through T-10 as proposed technical contracts.
+- **Not authorized:** production implementation, official benchmark execution, Docker/WASM waiver,
+  scientific-validity approval, or changing the user-owned `tasks.md`.
+
+`owner_approved` means the owner authorized the documented scope and wording. It does not mean
+`implemented` or `verified`. Those statuses require later code and validation evidence.
+
+### Approved amendment register
+
+| ID | Status | Date | Source | Affected area | Implementation milestone |
+|---|---|---|---|---|---|
+| AM-01 | `owner_approved` | 2026-11-24 | Requirements 5.2, 20.1-20.3 | environment identity | M2.1 |
+| AM-02 | `owner_approved` | 2026-11-24 | Requirement 9.1, 4.4 | challenge/language-family scope | M2.4/M2.5 |
+| AM-03 | `owner_approved` | 2026-11-24 | Requirement 10.4 | weighted scoring | M2.8 |
+| AM-04 | `owner_approved` | 2026-11-24 | Requirements 3.5, 11.2 | providers | M2.7/M2.11 |
+| AM-05 | `owner_approved` | 2026-11-24 | Requirement 12.5 | authoritative storage | M2.7 |
+| AM-06 | `owner_approved` | 2026-11-24 | Requirement 20.8 | void/resource outcomes | M2.6/M2.8 |
+| AM-07 | `owner_approved` | 2026-11-24 | Requirement 7.6 | status migration | M2.1 |
+| AM-08 | `owner_approved` | 2026-11-24 | Requirement 11.5 | response extraction | M2.6 |
+| AM-09 | `owner_approved` | 2026-11-24 | Requirements 15, 20.10 | execution eligibility | M2.6/secure deployment later |
+| AM-10 | `owner_approved` | 2026-11-24 | Requirement 3.1-3.2 | research preregistration | M2.11 |
+| AM-11 | `owner_approved` | 2026-11-24 | Requirement 3.3 | variant definition | M2.3/M2.5 |
+| AM-12 | `owner_approved` | 2026-11-24 | Requirement 4.1 | bounded novelty search | M2.3 |
+| AM-13 | `owner_approved` | 2026-11-24 | Requirements 6.5, 7.5 | collection/string scope | later language family |
+| AM-14 | `owner_approved` | 2026-11-24 | Requirement 9.3 | program task counts | M2.5/M2.9 |
+| AM-15 | `owner_approved` | 2026-11-24 | Requirements 13-19 | product phase scope | later product phase |
+| AM-16 | `owner_approved` | 2026-11-24 | frozen grammar limitation | translator boundary | M2.2/M2.6 |
+
+### Approved technical requirement register
+
+| ID | Status | Date | Implementation meaning |
+|---|---|---|---|
+| F1 | `owner_approved` | 2026-11-24 | Definition-only programs return `None`; production/reference differential corpus required |
+| F2 | `owner_approved` | 2026-11-24 | Translator is mandatory on every benchmark execution path; raw parser remains a documented limitation |
+| F3 | `owner_approved` | 2026-11-24 | Preserve Python 3.11+ target only after import fixes and matrix validation |
+| F4 | `owner_approved` | 2026-11-24 | Implement runtime-bound `environment_id` separately from legacy `language_id` |
+| F5 | `owner_approved` | 2026-11-24 | Add structured result diagnostics with backward-compatible serialization migration |
+| T-01 through T-10 | `owner_approved` | 2026-11-24 | Implement only after the canonical contracts and validation gates below are satisfied |
+
+No research-validity decision is approved. R1-R13 retain their explicit `PENDING` or `DEFERRED`
+statuses in the research register. Official/untrusted execution remains blocked until Docker/WASM
+acceptance passes.
+
 
 This package records decisions needed before Wave 2.1 implementation. It does not change
 `.kiro/specs/unknownlang/requirements.md` or `.kiro/specs/unknownlang/design.md` on its own.
@@ -91,7 +141,7 @@ seeds can share or split identities. This weakens reproducibility claims.
 
 **Recommendation:** Approve AM-01.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-02 - Challenge capability scope
 
@@ -117,7 +167,7 @@ challenge categories.
 
 **Recommendation:** Approve the narrow scope and plan a later language-family extension.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-03 - Weighted score and research headline
 
@@ -141,7 +191,7 @@ All-void tasks contribute no weight. Incomplete runs are provisional and cannot 
 **Recommendation:** Approve the weighted score and retain the unweighted metric as diagnostic/research
 context.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-04 - Provider order
 
@@ -165,7 +215,7 @@ runs validate engineering but not model behavior.
 
 **Recommendation:** Approve mock-first and Ollama-first.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-05 - Storage
 
@@ -188,7 +238,7 @@ integrity is tamper-evident rather than tamper-proof.
 
 **Recommendation:** Approve files for Wave 2 only if the claim is narrowed to trusted-runner auditability.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-06 - Resource-limit outcomes
 
@@ -213,7 +263,7 @@ metrics may still be displayed with void counts.
 
 **Recommendation:** Approve the distinct-void policy.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-07 - Execution status
 
@@ -238,7 +288,7 @@ Wave 2 implementation can claim this status compliance before the migration or a
 **Recommendation:** Approve the boundary mapping first; implement runtime changes only in a later
 approved milestone.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-08 - Response extraction
 
@@ -262,7 +312,7 @@ the extraction method and failure category must be explicit.
 
 **Recommendation:** Approve the fallback with strict size and parsing rules.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-09 - Sandbox scope
 
@@ -286,7 +336,7 @@ runs remain blocked until the sandbox is implemented and validated.
 **Recommendation:** Approve trusted-local-only Wave 2 design validation, but do not approve official
 execution without the sandbox.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-10 - Research hypothesis protocol
 
@@ -301,7 +351,7 @@ held-out language variants. Requirement 3.2 requires a complexity/degradation co
 > grammar variation. Surface-name and semantic-configuration factors SHALL not be described as
 > grammar complexity.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-11 - Variant count
 
@@ -316,7 +366,7 @@ level in one execution.
 > A requirement for 100 genuinely different grammar families is deferred to a later language-family
 > milestone.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-12 - Novelty and public-data verification
 
@@ -330,7 +380,7 @@ repositories or training datasets and recording the result with a timestamp.
 > claim to prove absence from all training datasets. Family-level contamination remains an explicit
 > research limitation.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-13 - Collection and string limits
 
@@ -342,7 +392,7 @@ repositories or training datasets and recording the result with a timestamp.
 > language has no collection or string values. The requirement becomes active when a later language
 > family adds those types. Wave 2 SHALL retain output, AST, step and call-depth limits.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-14 - Program test-count scope
 
@@ -355,7 +405,7 @@ challenge.
 > hidden edge cases. Single-query value tasks are a separate form and SHALL declare their answer-space,
 > query and verification rules; they SHALL not be described as satisfying the program-challenge count.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-15 - API, frontend, deployment and demo phase scope
 
@@ -368,7 +418,7 @@ contents.
 > product phase. Wave 2 is a local design/benchmark-core phase and SHALL not claim those capabilities
 > are implemented. The historical Phase 1 checklist is planning context, not repository acceptance.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 ### AM-16 - Raw parser workaround
 
@@ -382,7 +432,7 @@ callers.
 > raw keyword-prefix parser ambiguity remains a documented Wave 1 limitation and is not claimed fixed.
 > A grammar word-boundary correction requires a later grammar-version decision.
 
-**Owner approval:** `[ ] Approved  [ ] Rejected  [ ] Needs discussion`
+**Owner approval:** `[x] Owner-authorized on 2026-11-24; implementation pending`
 
 
 
@@ -522,7 +572,7 @@ correlated guesses.
 **Recommendation:** Choose Alternative A for local architecture validation only. Choose Alternative B
 before any official or untrusted model-generated execution.
 
-**Owner approval:** `[ ] Alternative A  [ ] Alternative B  [ ] Needs discussion`
+**Owner decision:** `[x] Alternative A owner-authorized on 2026-11-24  [ ] Alternative B  [ ] Needs discussion`
 
 ## Research register
 
@@ -563,34 +613,36 @@ not a Wave 2 harness-only milestone.
 **Recommendation:** Choose Alternative A for Wave 2 and amend the broader novelty/complexity claims.
 Choose Alternative B only if the owner wants to expand scope substantially.
 
-**Owner approval:** `[ ] Alternative A  [ ] Alternative B  [ ] Needs discussion`
+**Owner decision:** `[x] Alternative A owner-authorized on 2026-11-24  [ ] Alternative B  [ ] Needs discussion`
 
 ## Part 6. Final approval checklist
 
-The owner must explicitly decide each item:
+The owner authorization has marked the decisions listed below as `owner_approved`. This does not mark
+anything implemented or verified. Research-register items remain pending/deferred, and alternative B
+options remain unselected.
 
-- `[ ]` AM-01 environment identity
-- `[ ]` AM-02 challenge capability scope
-- `[ ]` AM-03 weighted score and headline
-- `[ ]` AM-04 provider order
-- `[ ]` AM-05 storage source of truth
-- `[ ]` AM-06 resource-limit treatment
-- `[ ]` AM-07 execution status migration
-- `[ ]` AM-08 response extraction
-- `[ ]` AM-09 sandbox scope
-- `[ ]` AM-10 research hypothesis protocol
-- `[ ]` AM-11 variant-count definition
-- `[ ]` AM-12 bounded novelty/public-data verification
-- `[ ]` AM-13 collection/string-limit scope
-- `[ ]` AM-14 program test-count scope
-- `[ ]` AM-15 API/frontend/deployment/demo phase scope
-- `[ ]` AM-16 raw-parser translator workaround
-- `[ ]` F1 definition-only runtime contract
-- `[ ]` F2 raw-parser translator boundary
-- `[ ]` F3 Python support and compatibility matrix
-- `[ ]` F5 structured execution-result contract
-- `[ ]` T-01 authoritative pair-group identity
-- `[ ]` T-03 trusted reference-cost artifact boundary
+- `[x] owner_approved` AM-01 environment identity
+- `[x] owner_approved` AM-02 challenge capability scope
+- `[x] owner_approved` AM-03 weighted score and headline
+- `[x] owner_approved` AM-04 provider order
+- `[x] owner_approved` AM-05 storage source of truth
+- `[x] owner_approved` AM-06 resource-limit treatment
+- `[x] owner_approved` AM-07 execution status migration
+- `[x] owner_approved` AM-08 response extraction
+- `[x] owner_approved` AM-09 sandbox scope
+- `[x] owner_approved` AM-10 research hypothesis protocol
+- `[x] owner_approved` AM-11 variant-count definition
+- `[x] owner_approved` AM-12 bounded novelty/public-data verification
+- `[x] owner_approved` AM-13 collection/string-limit scope
+- `[x] owner_approved` AM-14 program test-count scope
+- `[x] owner_approved` AM-15 API/frontend/deployment/demo phase scope
+- `[x] owner_approved` AM-16 raw-parser translator workaround
+- `[x] owner_approved` F1 definition-only runtime contract
+- `[x] owner_approved` F2 raw-parser translator boundary
+- `[x] owner_approved` F3 Python support and compatibility matrix
+- `[x] owner_approved` F5 structured execution-result contract
+- `[x] owner_approved` T-01 authoritative pair-group identity
+- `[x] owner_approved` T-03 trusted reference-cost artifact boundary
 - `[ ]` official execution class and Docker/WASM policy
 - `[ ]` Composite chance-floor policy and correlated-guess baseline
 - `[ ]` research scope: narrow family or genuine grammar-family generation

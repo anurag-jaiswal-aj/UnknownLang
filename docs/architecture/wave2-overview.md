@@ -1,7 +1,7 @@
 # Wave 2 Architecture Overview: Benchmark Execution Architecture and Design
 
-Status: **Proposed. Pending review and explicit approval. No implementation has been started.**
-Baseline: Wave 1C.16.1, commit `642b2c8`, 1,142 tests passing.
+Status: **Owner-authorized scope; implementation and verification pending. No Wave 2.1 implementation has started.**
+Baseline reviewed for authorization: Wave 2.0.7, commit `94dea26`.
 
 | Document | Content |
 |---|---|

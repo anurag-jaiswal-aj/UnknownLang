@@ -272,3 +272,104 @@ UnknownLang is an adaptive AI reasoning benchmark platform that evaluates whethe
 8. THE Platform SHALL enforce interpreter-level resource limits (max_steps, max_ast_depth, max_call_depth, max_collection_size, max_string_size, max_output_size); submissions exceeding limits SHALL be treated as a distinct inconclusive status, not a failed/incorrect result.
 9. THE Platform SHALL maintain reproducibility of benchmark results with full audit trail.
 10. THE Interpreter SHALL NOT be considered fully sandboxed; THE Platform SHALL require process-level isolation (Docker/WASM) for untrusted program execution.
+
+---
+
+## Wave 2.0.9 approved amendments
+
+Effective date: **2026-11-24**. Authorization source: the project-owner authorization message in the
+Wave 2.0.9 Kiro session. No owner identity or signature is recorded. These amendments change the
+normative interpretation for the Wave 2 scope; they do not claim implementation or verification.
+
+### AM-01 Environment identity
+
+The existing seed-derived `language_id` remains a compatibility identifier. Wave 2 additionally
+identifies an executable environment with a versioned hash of its canonical grammar, complete semantic
+specification, surface profile, generator family/algorithm versions and runtime semantics version.
+Generated timestamps and host runtime versions remain metadata. The identifiers are not interchangeable.
+
+### AM-02 Challenge scope
+
+Wave 2 categories are limited to syntax comprehension, expression evaluation, semantic inference,
+control-flow reasoning, program construction, recursion and error interpretation. Arrays, strings,
+sorting and search require a later language-family extension.
+
+### AM-03 Weighted correctness
+
+The platform computes and reports normalized difficulty-weighted correctness. Unweighted held-out
+accuracy may be reported separately and does not replace the weighted metric.
+
+### AM-04 Provider order
+
+The deterministic mock is the engineering baseline, local Ollama is the first real provider, and an
+OpenAI-compatible transport is optional and later. No paid or externally hosted provider is required
+for the zero-cost baseline.
+
+### AM-05 Storage
+
+Wave 2 uses content-addressed files and append-only hash-chained run records as its source of truth.
+SQLite may be a disposable derived index and is not a second writable source of truth. Hash chains are
+tamper-evident, not tamper-proof.
+
+### AM-06 Resource outcomes
+
+Resource-limit and infrastructure outcomes are distinct void/inconclusive results. They are excluded
+from correctness, retained diagnostically, and make a run provisional unless an explicitly approved
+future policy permits a cap. They are never silently converted into successes or model failures.
+
+### AM-07 Execution status
+
+The execution boundary exposes `invalid_program` for parse/validation failures and `error` for executed
+semantic failures. During migration, legacy `error` plus structured syntax evidence may map to
+`invalid_program`; the mapping is versioned in the run manifest.
+
+### AM-08 Response extraction
+
+Program extraction uses the last fenced code block when present and otherwise the entire response.
+Value tasks use the final `ANSWER:` line. Extraction method and failures are recorded; ambiguous
+multiple programs are rejected.
+
+### AM-09 Sandbox scope
+
+Trusted-local development and labelled local design-validation pilots may use a watchdog backstop.
+Official and untrusted execution require Docker/WASM isolation, no network, temporary filesystem,
+resource controls and runtime attestation. Trusted-local results are not security-compliant official
+benchmark results.
+
+### AM-10 Research protocol
+
+Before real-model evaluation, the project preregisters model population, percentile calculation,
+held-out endpoint, comparison statistic, task population, prompt conditions and non-circular analysis.
+Scientific validity remains a post-pilot decision.
+
+### AM-11 Variant definition
+
+A Wave 2 variant is a reproducibly identified environment consisting of a validated surface profile
+and semantic configuration. This does not claim 100 distinct grammar families.
+
+### AM-12 Novelty search
+
+Novelty reporting uses bounded searches over named public repositories, indexes and datasets with
+sources, methods, timestamps, matches and not-found-in-searched-source results. It never claims proof
+of absence from all model training data.
+
+### AM-13 Collection/string scope
+
+Collection and string limits are deferred until a later language family adds those value types. Wave 2
+retains applicable output, AST, step and call-depth limits.
+
+### AM-14 Program tests
+
+Program-construction challenges require 3–5 public examples and 10–20 total tests. Single-query value
+tasks are a separate form with their own answer-space and verification contract.
+
+### AM-15 Product phase
+
+API, frontend, cloud, authentication, deployment and demo requirements are assigned to a later product
+phase. Wave 2 is a local benchmark-core phase and does not claim those capabilities are implemented.
+
+### AM-16 Translator boundary
+
+The surface translator is mandatory on every benchmark execution path, including submissions, hidden
+definitions, appended test calls and reference-generated surface programs. The raw keyword-prefix parser
+limitation remains documented until a separately versioned grammar decision.
