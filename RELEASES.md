@@ -2,6 +2,23 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.2 — Architecture closure and requirements reconciliation
+- **Branch:** `main`
+- **Status:** **NEEDS_CHANGES.** Design-only closure documents are complete, but Wave 2 remains
+  blocked by approval-required requirement amendments and security/provider/runtime prerequisites.
+- **Commit:** `bbe0106` (`docs/architecture/` closure contracts and traceability)
+- **Validation:** 125 documentation checks passed, all 7 Mermaid diagrams parsed, the planted-defect
+  checker caught 21 defects with an unmodified control, and the full repository suite passed 1,142
+  tests with exit code 0.
+- **Scope:** No production code, runtime semantics or tests were changed. `tasks.md` remains the
+  only user-owned working-tree modification.
+- **Key blockers:** T7/T8 canonical pair equivalence, P3/bootstrap/D8 contracts are now specified;
+  Requirement deviations remain open for Docker/WASM, weighted scoring/resource status, providers,
+  SQLite, challenge categories, execution statuses and response extraction. The security-compliant
+  official run remains blocked without Docker/WASM.
+- **Decision:** Do not begin Wave 2 implementation. Obtain approval for `wave2-decisions.md` and the
+  proposed amendments in `requirements-traceability.md` first.
+
 ## Wave 2.0.1 — Architecture review and design corrections
 - **Branch:** `main`
 - **Status:** Review only. Wave 2 implementation remains blocked pending approval.
