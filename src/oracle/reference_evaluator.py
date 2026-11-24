@@ -127,6 +127,12 @@ class ReferenceContext:
             raise OutputLimitExceeded("Output size exceeded")
 
 
+def _require_bool_operand(value: Any) -> None:
+    """Strict boolean operand check: only bool is accepted. Integers are never truthy here."""
+    if not isinstance(value, bool):
+        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(value).__name__}")
+
+
 class ReferenceEvaluator:
     """
     Independent recursive reference evaluator (the project's test oracle).
@@ -356,9 +362,12 @@ class ReferenceEvaluator:
         context.increment_steps()
         b = self._eval(args[1], context, language_spec)
 
-        # Validate types
-        if not isinstance(a, int) or not isinstance(b, int):
-            raise ExecutionError(f"Arithmetic operation '{op_name}' requires integer arguments")
+        # Validate types. bool is a subclass of int in Python, so the check compares types exactly.
+        for operand in (a, b):
+            if type(operand) is not int:
+                raise ExecutionError(
+                    f"Arithmetic operation '{op_name}' requires int arguments, got {type(operand).__name__}"
+                )
 
         mode = context.arithmetic_mode
 
@@ -434,70 +443,42 @@ class ReferenceEvaluator:
 
     def _eval_boolean_op(self, op_name: str, args: list[Tree], context: ReferenceContext,
                          language_spec: LanguageSpec) -> bool:
-        """Evaluate boolean operation (and/or) with short-circuit support."""
+        """Evaluate and/or with strict boolean operands (design.md, Boolean Semantics).
+
+        Short-circuit: the left operand is evaluated and must be bool. It decides the result when
+        it is False for ``and`` or True for ``or``, and then the right operand is not evaluated.
+        Otherwise the right operand is evaluated and must be bool.
+
+        Eager: both operands are evaluated, left then right, before either one is checked. An
+        error raised while evaluating the right operand is therefore reported first.
+        """
         context.increment_steps()
 
         if len(args) != 2:
             raise ExecutionError(f"Boolean operation '{op_name}' requires 2 arguments, got {len(args)}")
+        if op_name not in ("and", "or"):
+            raise ExecutionError(f"Unknown boolean operation: {op_name}")
 
-        short_circuit = context.short_circuit_mode
+        decisive = op_name == "or"  # the left value that fixes the result: False for and, True for or
 
-        # Evaluate left operand
+        if context.short_circuit_mode:
+            context.increment_steps()
+            left_value = self._eval(args[0], context, language_spec)
+            _require_bool_operand(left_value)
+            if left_value == decisive:
+                return decisive
+            context.increment_steps()
+            right_value = self._eval(args[1], context, language_spec)
+            _require_bool_operand(right_value)
+            return right_value
+
         context.increment_steps()
         left_value = self._eval(args[0], context, language_spec)
-
-        if not isinstance(left_value, bool):
-            raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(left_value).__name__}")
-
-        if op_name == "and":
-            if not left_value:  # False
-                if short_circuit:
-                    return False  # Don't evaluate right
-                else:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return False
-            else:  # True
-                if short_circuit:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return right_value
-                else:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return right_value
-
-        elif op_name == "or":
-            if left_value:  # True
-                if short_circuit:
-                    return True  # Don't evaluate right
-                else:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return True
-            else:  # False
-                if short_circuit:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return right_value
-                else:
-                    context.increment_steps()
-                    right_value = self._eval(args[1], context, language_spec)
-                    if not isinstance(right_value, bool):
-                        raise ExecutionError(f"Boolean operation requires boolean arguments, got {type(right_value).__name__}")
-                    return right_value
-
-        raise ExecutionError(f"Unknown boolean operation: {op_name}")
+        context.increment_steps()
+        right_value = self._eval(args[1], context, language_spec)
+        _require_bool_operand(left_value)
+        _require_bool_operand(right_value)
+        return (left_value and right_value) if op_name == "and" else (left_value or right_value)
 
     def _eval_not(self, args: list[Tree], context: ReferenceContext, language_spec: LanguageSpec) -> bool:
         """Evaluate not operation."""
@@ -526,7 +507,8 @@ class ReferenceEvaluator:
         context.increment_steps()
         right = self._eval(args[1], context, language_spec)
 
-        return left == right
+        # Strict typing: values of different types are never equal, so 1 is not equal to true.
+        return type(left) is type(right) and left == right
 
     def _eval_if(self, tree: Tree, context: ReferenceContext, language_spec: LanguageSpec) -> Any:
         """Evaluate if-expression (if condition then else)."""

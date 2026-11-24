@@ -1059,8 +1059,13 @@ class IterativeEvaluator:
             raise ExecutionError(f"Arithmetic operation '{op_name}' requires 2 arguments, got {len(args)}")
         
         a, b = args
-        if not isinstance(a, int) or not isinstance(b, int):
-            raise ExecutionError(f"Arithmetic operation '{op_name}' requires integer arguments")
+        # bool is a subclass of int in Python, so isinstance(True, int) is True. The language's
+        # int type is exactly int, so each operand's type is compared exactly.
+        for operand in (a, b):
+            if type(operand) is not int:
+                raise ExecutionError(
+                    f"Arithmetic operation '{op_name}' requires int arguments, got {type(operand).__name__}"
+                )
         
         mode = context.arithmetic_mode
         
@@ -1187,7 +1192,9 @@ class IterativeEvaluator:
         if len(args) != 2:
             raise ExecutionError(f"eq requires 2 arguments, got {len(args)}")
         
-        return args[0] == args[1]
+        # Strict typing: values of different types are never equal, so 1 is not equal to true.
+        # Python would otherwise compare them by value (True == 1).
+        return type(args[0]) is type(args[1]) and args[0] == args[1]
 
 
 @dataclass

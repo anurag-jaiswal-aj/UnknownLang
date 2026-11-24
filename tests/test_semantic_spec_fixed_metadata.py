@@ -115,20 +115,19 @@ class TestBehaviorMatchesMetadata:
         lang = LanguageGenerator().generate(_seed())
         assert cls().execute(program, lang).status == "error"
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "KNOWN GAP (Wave 1C.15 finding, awaiting approval): both evaluators treat Python bool "
-        "as int, so booleans are coerced to integers in arithmetic and eq. type_coercion=strict "
-        "(design.md) says this should be a type error. Fixing it is a behavior change outside "
-        "this milestone. Remove this xfail when it is fixed."))
     @pytest.mark.parametrize("cls", [IterativeEvaluator, ReferenceEvaluator])
-    @pytest.mark.parametrize("program", ["(add 1 true)", "(mul true true)", "(div 4 true)"])
-    def test_no_bool_to_int_coercion_in_arithmetic(self, cls, program):
+    @pytest.mark.parametrize("op,program", [("add", "(add 1 true)"), ("mul", "(mul true true)"),
+                                            ("div", "(div 4 true)")])
+    def test_bool_operand_is_a_type_error_in_arithmetic(self, cls, op, program):
+        """type_coercion=strict: a bool is never used as an int (Wave 1C.16)."""
         lang = LanguageGenerator().generate(_seed())
-        assert cls().execute(program, lang).status == "error"
+        r = cls().execute(program, lang)
+        assert (r.status, r.value) == ("error", None)
+        assert r.error_message == f"Arithmetic operation '{op}' requires int arguments, got bool"
 
-    @pytest.mark.xfail(strict=True, reason="KNOWN GAP: eq compares bool and int by Python value; see above.")
     @pytest.mark.parametrize("cls", [IterativeEvaluator, ReferenceEvaluator])
-    def test_eq_does_not_coerce_bool_to_int(self, cls):
+    def test_eq_of_int_and_bool_is_false_not_true(self, cls):
+        """Different types are never equal under strict typing (Wave 1C.16)."""
         lang = LanguageGenerator().generate(_seed())
         r = cls().execute("(eq 1 true)", lang)
-        assert not (r.status == "success" and r.value is True)
+        assert (r.status, type(r.value), r.value) == ("success", bool, False)
