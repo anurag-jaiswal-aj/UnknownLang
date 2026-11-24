@@ -25,6 +25,9 @@ interpreters, and measure how well the models generalize beyond the examples the
   - signed 64-bit integers and three overflow modes: wraparound, saturating, error-on-overflow
   - division truncating toward zero
   - strict boolean operands, with short-circuit or eager `and` / `or`
+  - strict types, no coercion: arithmetic takes int operands; `and`, `or`, `not` and `if` take
+    bool; `eq` returns false for values of different types. A type error has status `error`
+    and is raised when the operation runs.
 - **Execution.** `ExecutionEngine` (`src/execution/engine.py`) is the public entry point. It is a
   thin facade over `IterativeEvaluator` (`src/execution/iterative_evaluator.py`), which evaluates
   with an explicit frame stack, so user-function calls never use Python recursion. Functions use
@@ -48,9 +51,6 @@ interpreters, and measure how well the models generalize beyond the examples the
   `sandbox/` directory is an empty placeholder.
 - AST depth is checked after parsing, so a very large input still costs parse time before it is
   rejected (measured as roughly linear: an 8,000-level, 64 KB input took about 1.6 s).
-- Booleans are accepted where integers are expected: `(add 1 true)` returns 2 and `(eq 1 true)`
-  returns true in both evaluators, although the design specifies strict type coercion. Not yet
-  fixed; see `RELEASES.md` (Wave 1C.15).
 - Parse errors are reported with status `error`, not `invalid_program`.
 - The `ReferenceEvaluator` uses Python recursion: measured at 75 nested user-function calls under
   Python's default recursion limit (fewer when called from a deep stack such as a test runner).

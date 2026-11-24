@@ -2,6 +2,105 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 1C.16 — Strict runtime type semantics
+- **Branch:** `main`
+- **Status:** Closes the boolean-as-integer limitation recorded at Wave 1C.15. Both evaluators
+  now implement one type contract. Full suite: 1130 passed, exit code 0. Before this milestone it
+  was 1022 passed and 8 expected failures.
+
+### Commits
+| Commit | Change |
+|---|---|
+| `210e286` | strict operand types and type-aware equality in both evaluators; eager `and`/`or` order in the reference; `tests/test_strict_type_semantics.py`; the eight expected-failure tests are now ordinary tests |
+| `cb67f84` | literal-order test now proves the literal check runs first (it used `(print 1)`, which is not a builtin) |
+
+This ledger entry and the README update are committed after the commits above.
+
+### Type contract
+| Construct | Operands | Type error (status `error`) |
+|---|---|---|
+| `add`, `sub`, `mul`, `div`, `mod` | both `int` | `Arithmetic operation '<op>' requires int arguments, got <type>` |
+| `and`, `or` | both `bool` | `Boolean operation requires boolean arguments, got <type>` |
+| `not` | `bool` | `not requires boolean argument, got <type>` |
+| `if` | condition `bool` | `if condition must be boolean, got <type>` |
+| `eq` | any two values | none. Same type: value equality. Different types: `false` |
+
+- Operands are evaluated first. Arithmetic checks each operand, left to right, before the
+  division-by-zero and overflow checks. `(div 1 false)` is therefore a type error.
+- Short-circuit `and`/`or` check the left operand, then evaluate the right operand only when the
+  left one does not decide the result. The right operand must then be `bool`.
+- Eager `and`/`or` evaluate both operands, left then right, before either is checked. An error in
+  the right operand is reported first (design.md, "Key distinction").
+- `if` evaluates only the selected branch in both modes. The recursive examples in design.md need
+  a lazy `if`.
+- Type checks run on evaluated operands, when the operation runs. Literal range (1C.15) is still
+  checked before execution.
+- No check accepts an int where a bool is required, and no check uses `isinstance(x, int)`.
+  Arithmetic compares exact types. Boolean checks use `isinstance(x, bool)`, which is exact because
+  `int` is not a subclass of `bool`. A branch is chosen by truthiness only after that check.
+- Error text is identical in both evaluators. Status and text are checked by exact-match tests.
+
+### Equality decision
+Values of different types are never equal, so `(eq 1 true)` is `false`.
+- design.md declares `eq` as `["any", "any"] -> "bool"` with `value_equality` semantics.
+  `OperationInfo` in `src/language/semantics.py` declares the same signature. A type error would
+  make `eq` undefined on a declared input.
+- `type_coercion: strict` means no value of one type equals a value of another.
+- The spec does not state the mixed-type case in words. This rests on the declared signature.
+  See the decisions list below.
+
+### Production and reference changes
+- Production (`src/execution/iterative_evaluator.py`): `_eval_arithmetic` checks each operand with
+  `type(x) is int`. `_eval_eq` returns `type(a) is type(b) and a == b`.
+- Reference (`src/oracle/reference_evaluator.py`), written separately: the same arithmetic and
+  equality rules. `_eval_boolean_op` evaluates both operands of an eager `and`/`or` before checking
+  either. Its helper `_require_bool_operand` is local. The reference imports no production helper.
+- Before this milestone the reference checked the left operand of an eager `and`/`or` before it
+  evaluated the right one. `(and 1 (div 1 0))` returned a boolean error instead of the division error.
+
+### Compatibility
+- Programs that relied on bool-as-int now return `error`, for example `(add 1 true)` and
+  `(div 4 true)`. Before, they returned 2 and 4.
+- `(eq 1 true)` and `(eq 0 false)` now return `false`. Before, they returned `true`.
+- The arithmetic error text changed from `requires integer arguments` to
+  `requires int arguments, got <type>`. No existing test asserted the old text.
+- Valid int and bool programs are unchanged.
+
+### Verification
+- Full suite: 1130 passed, exit code 0. The same count and exit code on an exported copy of
+  commit `210e286`.
+- Focused groups, each with its own exit code: new and converted type and literal tests 321 passed
+  (exit 0); standalone evaluator tests 488 passed (exit 0); production execution tests 154 passed
+  (exit 0); reference evaluator tests 27 passed (exit 0); language layer 136 passed (exit 0).
+- `tests/test_strict_type_semantics.py` (100 tests): hand-derived status, exact type, value and
+  text for every evaluator and arithmetic mode, plus exact production/reference agreement.
+- Seeded random differential corpus: still passes. Its error rate rose, as expected.
+- Differential probe of 49 type-sensitive programs in both modes: 2 production/reference
+  divergences before the fix (both eager `and`/`or` ordering), 0 after.
+- Mutation QA: 24 mutants (12 production, 12 reference). 24 caught, 0 survived, 0 failed to apply.
+  Every mutant was caught by the type tests. Covered: bool accepted by arithmetic, bool check
+  removed, bool/int equality by value, `1` equal to `true`, boolean operand checks removed
+  (short-circuit, eager, `not`, `if`, helper), `if` accepting an int, div/mod skipping the type
+  check, eager order reintroduced, and one-sided raises or message text that split the evaluators.
+
+### Known limitations and decisions needing approval
+- **Type checks are runtime only.** An operand that is never evaluated is not type-checked: the
+  skipped operand of a short-circuit `and`/`or`, an untaken `if` branch, or a function body that is
+  never called. The design's boolean table supports this for `and`/`or`. Literal range differs:
+  1C.15 rejects an out-of-range literal before execution, even in an untaken branch. Please confirm
+  this split.
+- **Short-circuit with a non-boolean left operand and an erroring right operand.** The spec does
+  not say which error comes first. Both evaluators report the left operand's type error. Only
+  agreement is tested for this case.
+- **`SemanticSpec` metadata for `if`.** `build_spec` labels `if` as `eager` when `short_circuit` is
+  false, but the runtime evaluates `if` lazily in both configurations, and design.md ties eager
+  evaluation to boolean operators only. Not changed here. Recommend labelling `if` as
+  short-circuit in both configurations.
+- **Mixed-type equality** rests on the declared `any` signature, not on a sentence in the spec. A
+  type error instead would need typed `eq` overloads in design.md.
+- **No numeric ordering.** The MVP built-ins have no `<` or `>`, so no ordering contract applies.
+- **Error text is an implementation choice.** The spec defines the status (`error`), not the text.
+
 ## Wave 1C.15 — Language contract closure
 - **Branch:** `main`
 - **Status:** Closes two Wave 1C.14 limitations (integer literal range, `SemanticSpec` metadata).
