@@ -1,7 +1,8 @@
 # Wave 2 Architecture Overview: Benchmark Execution Architecture and Design
 
-Status: **Owner-authorized scope; implementation and verification pending. No Wave 2.1 implementation has started.**
-Baseline reviewed for authorization: Wave 2.0.7, commit `94dea26`.
+Status: **Wave 2.1.0 foundation implementation.** F1, surface translation, strict identity helpers,
+generator conflict validation and structured diagnostics are implemented. The benchmark harness, task
+system, scoring, providers, storage, replay and sandbox remain unimplemented.
 
 | Document | Content |
 |---|---|

@@ -46,7 +46,7 @@ def make_lang(mode="wraparound", short_circuit=True):
 
 ALLOWED_IMPORTS = {
     "__future__", "math", "dataclasses", "typing", "lark",
-    "src.language.generator", "src.language.semantics",   # language definitions / parser inputs
+    "src.language.generator", "src.language.semantics", "src.language.surface",  # language definitions / parser inputs
     "src.execution.types",                                # shared DATA types only
 }
 FORBIDDEN_FRAGMENTS = ("src.execution.engine", "src.execution.iterative_evaluator")

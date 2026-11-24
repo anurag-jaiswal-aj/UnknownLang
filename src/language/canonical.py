@@ -1,7 +1,7 @@
 """Canonical serialization for deterministic language identity."""
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 
 def canonicalize_value(value: Any) -> Any:

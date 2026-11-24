@@ -1,8 +1,10 @@
 # Wave 2 Requirements Traceability
 
-Status: **Wave 2.0.9 owner-authorized scope recorded on 2026-11-24.** This does not mean
-implemented or verified. Requirements not covered by the authorization remain pending, deferred or
-blocked. No normative requirements file was changed outside the approved amendment overlay.
+Status: **Wave 2.1.0 foundation implementation.** AM-01 through AM-16 are owner-authorized scope
+interpretations. F1, F2, F3-import fixes, F4 identity helpers and F5 structured diagnostics have
+partial implementation status as recorded below. Requirements not covered by the authorized scope
+remain pending, deferred or blocked. No normative requirements file was changed beyond the approved
+Wave 2.0.9 amendment overlay.
 
 This matrix compares the actual normative documents with the Wave 2 proposal. `DESIGN` means the
 architecture describes a path to satisfy the requirement but code is not yet implemented. `PARTIAL`

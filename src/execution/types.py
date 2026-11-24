@@ -36,6 +36,8 @@ DEFAULT_MAX_STEPS: int = 100_000
 DEFAULT_MAX_AST_DEPTH: int = 1_000
 DEFAULT_MAX_CALL_DEPTH: int = 100
 DEFAULT_MAX_OUTPUT_BYTES: int = 1_048_576  # 1 MB
+# Observable execution behavior version used by Wave 2 environment identity.
+RUNTIME_SEMANTICS_VERSION: int = 1
 
 
 class ExecutionError(Exception):
@@ -70,12 +72,27 @@ class ExecutionResult:
     value: Any = None
     output: str = ""
     error_message: str = ""
+    # Wave 2 fields are appended so existing positional construction remains valid.
+    error_kind: str | None = None
+    error_detail: str | None = None
+    steps_used: int | None = None
+    ast_depth_reached: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Return result as dictionary."""
+        """Return the legacy four-field dictionary for existing callers."""
         return {
             "status": self.status,
             "value": self.value,
             "output": self.output,
             "error_message": self.error_message,
+        }
+
+    def to_diagnostic_dict(self) -> dict[str, Any]:
+        """Return the versioned Wave 2 diagnostic representation."""
+        return {
+            **self.to_dict(),
+            "error_kind": self.error_kind,
+            "error_detail": self.error_detail,
+            "steps_used": self.steps_used,
+            "ast_depth_reached": self.ast_depth_reached,
         }

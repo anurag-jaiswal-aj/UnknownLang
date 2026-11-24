@@ -28,6 +28,7 @@ from typing import Any
 from lark import Lark, Token, Tree
 
 from src.language.generator import LanguageSpec
+from src.language.surface import SurfaceProfile, to_canonical
 from src.language.semantics import OperationInfo
 
 
@@ -152,7 +153,12 @@ class ReferenceEvaluator:
             self._parser_cache[grammar] = Lark(grammar, start="program")
         return self._parser_cache[grammar]
 
-    def execute(self, program_text: str, language_spec: LanguageSpec) -> ExecutionResult:
+    def execute(
+        self,
+        program_text: str,
+        language_spec: LanguageSpec,
+        surface_profile: SurfaceProfile | dict[str, object] | None = None,
+    ) -> ExecutionResult:
         """
         Execute a program in the given language.
 
@@ -164,7 +170,9 @@ class ReferenceEvaluator:
             ExecutionResult with status, value, and output
         """
         try:
-            # Parse the program
+            if surface_profile is not None:
+                program_text = to_canonical(program_text, surface_profile).canonical_text
+            # Parse the canonical program with the independent evaluator.
             grammar = language_spec.grammar
             parser = self._get_parser(grammar)
             tree = parser.parse(program_text)
@@ -193,6 +201,7 @@ class ReferenceEvaluator:
                 status="success",
                 value=result,
                 output=context.output_buffer,
+                steps_used=context.steps,
             )
 
         except ExecutionError as e:
@@ -207,15 +216,49 @@ class ReferenceEvaluator:
                 status = "output_limit_exceeded"
             else:
                 status = "error"
+            kind, detail = self._classify_error(str(e))
             return ExecutionResult(
                 status=status,
                 error_message=str(e),
+                error_kind=kind,
+                error_detail=detail,
+                steps_used=context.steps if 'context' in locals() else 0,
             )
         except Exception as e:
             return ExecutionResult(
                 status="error",
                 error_message=f"Runtime error: {str(e)}",
+                error_kind="syntax",
+                error_detail="syntax_error",
+                steps_used=0,
             )
+
+    @staticmethod
+    def _classify_error(message: str) -> tuple[str, str]:
+        lower = message.lower()
+        if message.startswith("Unknown identifier:"):
+            return "name", "identifier"
+        if message.startswith("Unknown function:"):
+            return "name", "function"
+        if "requires int arguments" in lower:
+            return "type", "arithmetic"
+        if "boolean operation requires" in lower:
+            return "type", "boolean"
+        if "not requires boolean" in lower:
+            return "type", "not"
+        if "if condition must be boolean" in lower:
+            return "type", "if"
+        if "division by zero" in lower or "modulo by zero" in lower:
+            return "division_by_zero", "division_by_zero"
+        if "integer overflow" in lower:
+            return "overflow", "overflow"
+        if "integer literal out of range" in lower:
+            return "literal_range", "literal_range"
+        if "requires" in lower and "argument" in lower:
+            return "arity", "builtin"
+        if "unexpected" in lower or "no terminal matches" in lower:
+            return "syntax", "syntax_error"
+        return "unknown", "unclassified"
 
     def _eval_program(self, tree: Tree, context: ReferenceContext, language_spec: LanguageSpec) -> Any:
         """Evaluate a program (list of statements/expressions)."""

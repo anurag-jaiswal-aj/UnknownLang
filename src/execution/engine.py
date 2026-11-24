@@ -34,6 +34,7 @@ from src.execution.types import (
     DEFAULT_MAX_STEPS,
     MAX_INT64,
     MIN_INT64,
+    RUNTIME_SEMANTICS_VERSION,
     AstDepthExceeded,
     ExecutionError,
     ExecutionResult,
@@ -54,6 +55,7 @@ __all__ = [
     "RecursionLimitExceeded",
     "MIN_INT64",
     "MAX_INT64",
+    "RUNTIME_SEMANTICS_VERSION",
     "DEFAULT_MAX_STEPS",
     "DEFAULT_MAX_AST_DEPTH",
     "DEFAULT_MAX_CALL_DEPTH",
@@ -86,11 +88,16 @@ class ExecutionEngine:
             max_call_depth=max_call_depth,
         )
 
-    def execute(self, program_text: str, language_spec: LanguageSpec) -> ExecutionResult:
+    def execute(
+        self,
+        program_text: str,
+        language_spec: LanguageSpec,
+        surface_profile=None,
+    ) -> ExecutionResult:
         """Parse and run ``program_text`` in the language described by ``language_spec``.
 
         Returns an ``ExecutionResult`` whose ``status`` is one of: success, error,
         step_limit_exceeded, recursion_limit_exceeded, ast_depth_exceeded,
         output_limit_exceeded. Resource limits are never raised as exceptions.
         """
-        return self._evaluator.execute(program_text, language_spec)
+        return self._evaluator.execute(program_text, language_spec, surface_profile=surface_profile)

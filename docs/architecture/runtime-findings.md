@@ -1,8 +1,9 @@
 # Runtime Findings from the Wave 2.0 Audit
 
-Status: **Report only. Nothing in this document has been fixed.**
-Baseline: Wave 1C.16.1, commit `642b2c8`.
-
+Status: **Wave 2.1.0 foundation implementation in progress.** F1, surface translation, strict canonical
+identity helpers, generator conflict validation and structured diagnostic fields are implemented in this
+milestone. The benchmark harness, task system, providers, store, replay, scoring and sandbox remain
+unimplemented. `invalid_program` boundary migration remains pending.
 The Wave 2.0 brief forbids modifying the runtime unless a design-critical defect is found, in which
 case it is to be reported separately and approval requested. These are the findings. For each one
 this document says what was observed, what it means for the benchmark, how the Wave 2 design already
@@ -251,3 +252,19 @@ dependencies are left untouched.
 the assistant wrote inside the repository by mistake in Wave 1C.16.1 and never committed. It has not
 been touched in Wave 2.0 and is not staged. Removing it is a deletion in the user's repository, so
 permission is requested.
+
+## Wave 2.1.0 foundation status
+
+- **F1:** implemented in production; definitions no longer publish a value, and differential tests pass.
+- **F2:** deterministic token-aware translator implemented in `src/language/surface.py` and integrated
+  through the optional `surface_profile` parameter on production, facade and reference execution.
+  The raw grammar ambiguity remains for direct raw-source callers; the future benchmark harness must
+  pass every applicable path through translation.
+- **F3:** missing `Optional` and `ClassVar` imports fixed. Python 3.14.6 imports and tests pass. Python
+  3.11–3.13 interpreters are present but lack the installed Lark dependency in this environment, so
+  their full test status is unavailable rather than claimed passing.
+- **F4:** `RUNTIME_SEMANTICS_VERSION`, strict benchmark canonicalization and `EnvironmentRecord` identity
+  helpers are implemented. The full environment/task manager and conformance corpus remain future work.
+- **F5:** structured result fields, diagnostic serialization, production step/depth diagnostics and
+  independent reference diagnostic fields are implemented. The `invalid_program` boundary migration
+  remains pending; legacy parse status remains `error` with structured syntax classification.

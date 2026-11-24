@@ -25,6 +25,7 @@ from typing import Any
 from lark import Lark, Token, Tree
 
 from src.language.generator import LanguageSpec
+from src.language.surface import SurfaceProfile, to_canonical
 from src.language.semantics import BUILTIN_OPERATIONS
 
 
@@ -291,7 +292,12 @@ class IterativeEvaluator:
             short_circuit_mode=language_spec.semantics.short_circuit_mode,
         )
 
-    def execute(self, program_text: str, language_spec: LanguageSpec) -> ExecutionResult:
+    def execute(
+        self,
+        program_text: str,
+        language_spec: LanguageSpec,
+        surface_profile: SurfaceProfile | dict[str, object] | None = None,
+    ) -> ExecutionResult:
         """
         Execute a program in the given language iteratively.
 
@@ -303,11 +309,20 @@ class IterativeEvaluator:
             ExecutionResult with status, value, and output
         """
         try:
+            if surface_profile is not None:
+                program_text = to_canonical(program_text, surface_profile).canonical_text
             parser = self._get_parser(language_spec.grammar)
             tree = parser.parse(program_text)
             context = self._new_context(language_spec)
         except Exception as e:
-            return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}")
+            return ExecutionResult(
+                status="error",
+                error_message=f"Runtime error: {str(e)}",
+                error_kind="syntax",
+                error_detail="syntax_error",
+                steps_used=0,
+                ast_depth_reached=0,
+            )
         return self._run(tree, context, language_spec)
 
     def _run(self, tree: Tree, context: EvalContext, language_spec: LanguageSpec) -> ExecutionResult:
@@ -319,8 +334,9 @@ class IterativeEvaluator:
                  expression in ``_handle_expr_frame``, never per frame.
         """
         frame_stack: list[Frame] = []
+        deepest = 0
         try:
-            self._validate_ast_depth(tree, context.max_ast_depth)
+            deepest = self._validate_ast_depth(tree, context.max_ast_depth)
             self._validate_int_literals(tree)
 
             frame_stack.append(Frame(frame_type=FrameType.EXPR, expr=tree, ast_depth=1))
@@ -328,36 +344,101 @@ class IterativeEvaluator:
                 frame = frame_stack[-1]
                 self._process_frame(frame_stack, frame, context, language_spec)
 
-            if context.result_stack:
+            if self._last_top_level_is_expression(tree) and context.result_stack:
                 return ExecutionResult(
                     status="success",
                     value=context.result_stack[-1],
                     output=context.output_buffer,
+                    steps_used=context.steps,
+                    ast_depth_reached=deepest,
                 )
-            if not tree.children:
-                # Empty source (no program elements) is a valid program with no value.
-                # Scoped to a childless program so a genuine "no result" bug in a
-                # non-empty program is still reported as an error.
-                return ExecutionResult(status="success", value=None, output=context.output_buffer)
+            # A trailing declaration is not an expression result. This also makes
+            # expression-then-definition agree with the independent reference path.
+            if not self._last_top_level_is_expression(tree):
+                # Declarations are not expressions. Empty and definition-only programs
+                # therefore succeed with no value, matching the reference evaluator.
+                return ExecutionResult(
+                    status="success",
+                    value=None,
+                    output=context.output_buffer,
+                    steps_used=context.steps,
+                    ast_depth_reached=deepest,
+                )
             return ExecutionResult(
                 status="error",
                 error_message="No result produced",
                 output=context.output_buffer,
             )
         except StepLimitExceeded as e:
-            return ExecutionResult(status="step_limit_exceeded", error_message=str(e), output=context.output_buffer)
+            return ExecutionResult(status="step_limit_exceeded", error_message=str(e), output=context.output_buffer,
+                                   error_kind="resource", error_detail="steps", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except AstDepthExceeded as e:
-            return ExecutionResult(status="ast_depth_exceeded", error_message=str(e), output=context.output_buffer)
+            return ExecutionResult(status="ast_depth_exceeded", error_message=str(e), output=context.output_buffer,
+                                   error_kind="resource", error_detail="ast_depth", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except OutputLimitExceeded as e:
-            return ExecutionResult(status="output_limit_exceeded", error_message=str(e), output=context.output_buffer)
+            return ExecutionResult(status="output_limit_exceeded", error_message=str(e), output=context.output_buffer,
+                                   error_kind="resource", error_detail="output", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except RecursionLimitExceeded as e:
-            return ExecutionResult(status="recursion_limit_exceeded", error_message=str(e), output=context.output_buffer)
+            return ExecutionResult(status="recursion_limit_exceeded", error_message=str(e), output=context.output_buffer,
+                                   error_kind="resource", error_detail="call_depth", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except ExecutionError as e:
-            return ExecutionResult(status="error", error_message=str(e), output=context.output_buffer)
+            kind, detail = self._classify_error(str(e))
+            return ExecutionResult(status="error", error_message=str(e), output=context.output_buffer,
+                                   error_kind=kind, error_detail=detail, steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         except Exception as e:
-            return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}", output=context.output_buffer)
+            return ExecutionResult(status="error", error_message=f"Runtime error: {str(e)}",
+                                   output=context.output_buffer, error_kind="unknown",
+                                   error_detail="unclassified", steps_used=context.steps,
+                                   ast_depth_reached=deepest)
         finally:
             self._unwind_frames(frame_stack, context)
+
+    @staticmethod
+    def _last_top_level_is_expression(tree: Tree) -> bool:
+        """Return whether the final top-level form is an expression."""
+        if not tree.children:
+            return False
+        last = tree.children[-1]
+        return (
+            isinstance(last, Tree)
+            and last.data == "program_element"
+            and bool(last.children)
+            and isinstance(last.children[0], Tree)
+            and last.children[0].data == "expr"
+        )
+
+    @staticmethod
+    def _classify_error(message: str) -> tuple[str, str]:
+        """Classify legacy messages into stable diagnostic fields during migration."""
+        lower = message.lower()
+        if message.startswith("Unknown identifier:"):
+            return "name", "identifier"
+        if message.startswith("Unknown function:"):
+            return "name", "function"
+        if "requires int arguments" in lower:
+            return "type", "arithmetic"
+        if "boolean operation requires" in lower:
+            return "type", "boolean"
+        if "not requires boolean" in lower:
+            return "type", "not"
+        if "if condition must be boolean" in lower:
+            return "type", "if"
+        if "requires" in lower and "argument" in lower:
+            return "arity", "builtin" if "operation" not in lower else "builtin"
+        if "division by zero" in lower or "modulo by zero" in lower:
+            return "division_by_zero", "division_by_zero"
+        if "integer overflow" in lower:
+            return "overflow", "overflow"
+        if "integer literal out of range" in lower:
+            return "literal_range", "literal_range"
+        if "syntax" in lower or "unexpected" in lower or "no terminal matches" in lower:
+            return "syntax", "syntax_error"
+        return "unknown", "unclassified"
 
     @staticmethod
     def _unwind_frames(frame_stack: list[Frame], context: EvalContext) -> None:
@@ -502,11 +583,9 @@ class IterativeEvaluator:
         if func_name is None or body is None:
             raise ExecutionError("def declaration missing required parts")
         
-        # Store the function in context
+        # Store the function in context. Definitions are declarations, not expressions.
         context.functions[func_name] = (tuple(params), body)
-        
-        # Push a success result
-        frame_stack.append(Frame(frame_type=FrameType.RETURN, result=True))
+        # No result frame is pushed; the program result is its last expression or None.
     
     def _push_call_frame(
         self,

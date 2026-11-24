@@ -411,13 +411,30 @@ class TestEmptyProgram:
         ours = evaluator.execute("", sc_lang)
         assert (ours.status, ours.value) == (ref.status, ref.value) == ("success", None)
 
-    def test_program_of_only_declarations_still_yields_a_value(self, evaluator, sc_lang):
-        """Guard against over-broad handling: a non-empty program is NOT treated as empty."""
+    def test_program_of_only_declarations_returns_no_value(self, evaluator, sc_lang):
+        """Definitions are declarations, not expression values."""
         result = evaluator.execute("(def f (x) x)", sc_lang)
-        assert result.status == "success"
-        assert result.value is True
+        assert (result.status, result.value) == ("success", None)
 
-    def test_evaluator_is_reusable_around_an_empty_program(self, evaluator, sc_lang):
+    def test_definition_order_matches_reference(self, evaluator, sc_lang):
+        cases = [
+            ("(def f (x) x)\n(def g (x) x)", None),
+            ("5\n(def f (x) x)", None),
+            ("(def f (x) x)\n5", 5),
+        ]
+        for source, expected in cases:
+            result = evaluator.execute(source, sc_lang)
+            assert (result.status, result.value) == ("success", expected)
+
+    def test_definition_only_matches_reference(self, evaluator, sc_lang):
+        from src.oracle.reference_evaluator import ReferenceEvaluator
+        source = "(def f (x) x)"
+        ours = evaluator.execute(source, sc_lang)
+        reference = ReferenceEvaluator().execute(source, sc_lang)
+        assert (ours.status, ours.value, type(ours.value)) == (
+            reference.status, reference.value, type(reference.value)
+        )
+
         assert evaluator.execute("(add 1 2)", sc_lang).value == 3
         assert evaluator.execute("", sc_lang).value is None
         assert evaluator.execute("(add 3 4)", sc_lang).value == 7

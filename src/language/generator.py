@@ -9,7 +9,7 @@ from .grammar import GrammarBuilder, GrammarSpec
 from .identity import compute_language_id
 from .semantics import SemanticRegistry, SemanticSpec, OperationInfo
 from .serializer import LarkSerializer
-from .seed import LanguageSeed, ValidationError
+from .seed import LanguageSeed, ValidationError, VALID_FEATURES
 
 
 @dataclass(frozen=True)
@@ -74,6 +74,12 @@ class LanguageGenerator:
             ValidationError: If the seed is not valid
             ValueError: If seed.syntax_style is not supported
         """
+        unsupported_features = sorted(set(seed.features) - VALID_FEATURES)
+        if unsupported_features:
+            raise ValidationError(
+                f"Unsupported features: {unsupported_features}. "
+                f"Supported features: {sorted(VALID_FEATURES)}"
+            )
         # Validate seed compatibility with semantic registry
         self._semantic_registry.validate_seed(seed)
 
@@ -94,7 +100,7 @@ class LanguageGenerator:
         # Build builtins dictionary (sorted for determinism)
         builtins = dict(sorted(semantic_spec.operations.items()))
 
-        return LanguageSpec(
+        spec = LanguageSpec(
             version="1.0.0",
             spec_version=spec_version,
             algorithm_version=algorithm_version,
@@ -104,6 +110,10 @@ class LanguageGenerator:
             semantics=semantic_spec,
             builtins=builtins,
         )
+        conflicts = self.detect_conflicts(spec, self._semantic_registry)
+        if conflicts:
+            raise ValidationError("Language specification conflicts: " + "; ".join(conflicts))
+        return spec
 
     def validate_grammar(self, grammar_text: str) -> bool:
         """
@@ -121,17 +131,24 @@ class LanguageGenerator:
     def detect_conflicts(
         self, spec: LanguageSpec, registry: SemanticRegistry
     ) -> list[str]:
-        """
-        Detect semantic conflicts between a language spec and a registry.
-
-        This is a stub for future use - currently returns an empty list.
-
-        Args:
-            spec: The language specification to check
-            registry: The semantic registry to check against
-
-        Returns:
-            List of conflict descriptions (empty for now)
-        """
-        # TODO: Implement conflict detection logic when needed
-        return []
+        """Return deterministic conflicts between a spec and the semantic registry."""
+        conflicts: list[str] = []
+        expected = registry.build_spec(spec.seed)
+        if set(spec.builtins) != set(expected.operations):
+            conflicts.append("builtin operation names differ from registry")
+        for name in sorted(set(spec.builtins) | set(expected.operations)):
+            actual = spec.builtins.get(name)
+            wanted = expected.operations.get(name)
+            if actual is None or wanted is None:
+                continue
+            for field in ("arity", "arg_types", "return_type", "semantic_mode"):
+                if getattr(actual, field) != getattr(wanted, field):
+                    conflicts.append(f"builtin {name}.{field} differs from registry")
+        actual_sem = spec.semantics
+        expected_sem = expected
+        for field in ("arithmetic_mode", "short_circuit_mode", "evaluation_order", "scoping", "type_coercion"):
+            if getattr(actual_sem, field) != getattr(expected_sem, field):
+                conflicts.append(f"semantics.{field} differs from registry")
+        if not self.validate_grammar(spec.grammar):
+            conflicts.append("grammar cannot be parsed by Lark")
+        return sorted(set(conflicts))

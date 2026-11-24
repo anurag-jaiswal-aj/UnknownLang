@@ -4,6 +4,8 @@ This module provides serialization of GrammarSpec to valid Lark grammar text,
 with validation support to ensure the generated grammar can construct a Lark parser.
 """
 
+from typing import ClassVar
+
 from lark import Lark, UnexpectedInput
 
 from .grammar import GrammarSpec
