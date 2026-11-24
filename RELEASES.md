@@ -2,6 +2,20 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.1 — Architecture review and design corrections
+- **Branch:** `main`
+- **Status:** Review only. Wave 2 implementation remains blocked pending approval.
+  The review found five remaining failures in the corrected architecture: surface-pair matching,
+  pair-component bootstrap edge cases, P3 void/empty behavior, D8 multi-test aggregation and range,
+  and guessing/headline requirement deviations.
+- **Commit:** `be650dc` (`docs/architecture/wave2-review.md`)
+- **Verification:** 1,142 tests passed, exit code 0. The documentation checker passed 109 checks,
+  all 7 Mermaid diagrams parsed, and 21 planted documentation defects were caught by the checker.
+- **Runtime:** no production code changed. The authorized untracked `tmp/mutate_if_metadata.py`
+  was verified and deleted. `.kiro/specs/unknownlang/tasks.md` remains untouched.
+- **Decision:** Do not begin Wave 2 implementation until the blockers and SD1-SD10 decisions in
+  `wave2-review.md` are approved.
+
 ## Wave 2.0 — Benchmark execution architecture and design
 - **Branch:** `main`
 - **Status:** **Documentation only. Proposed and awaiting approval. No code was written or changed.**
