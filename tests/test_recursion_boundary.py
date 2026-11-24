@@ -4,24 +4,20 @@ These tests verify that the frame-based evaluation engine correctly
 enforces the call depth limit (default 100) for recursive functions.
 
 IMPLEMENTATION NOTE:
-The current implementation uses Python's call stack for recursive evaluation,
-so Python's recursion limit (~1000) is hit before the engine's max_call_depth
-limit (default 100) can be tested.
+ExecutionEngine is a facade over the iterative evaluator, which keeps user-function
+calls on an explicit frame stack instead of the Python call stack. Python's recursion
+limit therefore does not constrain the engine, and max_call_depth (default 100) is the
+only call-depth ceiling, so the exact boundary below is testable.
 
-These tests are designed for a frame-based evaluation engine where each
-recursive call pushes a frame onto an explicit call stack rather than
-using Python's call stack. With that implementation, the tests will
-verify max_call_depth=100 works correctly.
-
-EXPECTED BEHAVIOR (with frame-based evaluation):
+EXPECTED BEHAVIOR:
 - Recursion depth tracking via EvalContext.call_depth
 - RecursionLimitExceeded raised when depth exceeds max_call_depth
 - max_call_depth default: 100
 - max_call_depth=100 allows 100 active invocations (depth 1-100)
 - depth 101 triggers RecursionLimitExceeded
 
-The engine increments call depth in _eval_user_func before evaluating the body,
-and decrements it in a finally block, ensuring proper cleanup.
+The evaluator increments call depth when it pushes a user-function frame and restores
+it when the frame completes or the call fails, so state is clean after an error.
 """
 
 import pytest

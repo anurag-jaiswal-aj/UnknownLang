@@ -48,8 +48,9 @@ interpreters, and measure how well the models generalize beyond the examples the
   `sandbox/` directory is an empty placeholder.
 - AST depth is checked after parsing, so a very large input still costs parse time before it is
   rejected (measured as roughly linear: an 8,000-level, 64 KB input took about 1.6 s).
-- Integer literals outside the signed 64-bit range (for example `9223372036854775808`) are not
-  rejected; only arithmetic results are wrapped, saturated or reported as overflow.
+- Booleans are accepted where integers are expected: `(add 1 true)` returns 2 and `(eq 1 true)`
+  returns true in both evaluators, although the design specifies strict type coercion. Not yet
+  fixed; see `RELEASES.md` (Wave 1C.15).
 - Parse errors are reported with status `error`, not `invalid_program`.
 - The `ReferenceEvaluator` uses Python recursion: measured at 75 nested user-function calls under
   Python's default recursion limit (fewer when called from a deep stack such as a test runner).

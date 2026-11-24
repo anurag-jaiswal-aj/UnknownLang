@@ -2,6 +2,51 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 1C.15 — Language contract closure
+- **Branch:** `main`
+- **Status:** Closes two Wave 1C.14 limitations (integer literal range, `SemanticSpec` metadata).
+  Full suite: 1022 passed, 8 expected failures (`xfail`, strict), exit code 0.
+
+### Commits
+| Commit | Change |
+|---|---|
+| `eac475b` | integer-literal range check in both evaluators, with `tests/test_int_literal_contract.py` |
+| `6028f47` | fixed `evaluation_order`, `scoping`, `type_coercion` on `SemanticSpec`, with tests |
+
+This entry, the README edit and the recursion-boundary docstring fix are committed afterwards.
+
+### Integer literal contract
+- A literal is valid iff `-9223372036854775808 <= value <= 9223372036854775807`.
+- The grammar is unchanged (`NUMBER` is still `-?\d+`). Each evaluator checks the parsed tree
+  once, after parsing and before any evaluation, so a bad literal is rejected wherever it
+  appears: nested, in a function body that is never called, or in an untaken `if` branch.
+  No steps are consumed and no output is produced.
+- Result: status `error`, message
+  `Integer literal out of range: <text> (must be between -9223372036854775808 and 9223372036854775807)`.
+  No new exception type; the existing `ExecutionError` is used.
+- Arithmetic modes are unaffected: they still govern arithmetic results only.
+- The production check uses `Tree.iter_subtrees`. `Tree.scan_values` is recursive in Lark and
+  failed 5 existing deep-nesting tests before it was replaced.
+- Compatibility: a program containing an out-of-range literal previously ran with a Python
+  big integer and now returns `error`.
+
+### SemanticSpec
+- Requirement 6 criterion 3 requires `evaluation_order`, `scoping`, `arithmetic` and
+  `type_coercion` in the semantics object. Requirement 5 criterion 6 and design.md defer them
+  only as configurable dimensions. The two are consistent, so they are fixed metadata.
+- New fields, with defaults so existing constructions keep working: `evaluation_order =
+  "left-to-right"`, `scoping = "lexical"`, `type_coercion = "strict"`. Any other value raises
+  `ValidationError`. `SemanticRegistry.build_spec` populates them. They are not seed options
+  and do not change the language identity hash.
+
+### Known limitations and decisions needing approval
+- **Booleans are accepted as integers.** `(add 1 true)` returns 2 and `(eq 1 true)` returns true
+  in both evaluators (Python `bool` is an `int`). design.md specifies `type_coercion: strict`, so
+  the recorded metadata is not yet fully true. Not changed here because it alters runtime
+  behavior. Eight strict `xfail` tests document it and will fail loudly once it is fixed.
+- Parse errors still return `error`, not `invalid_program`.
+- Reference evaluator resource-limit parity and parser source-size limits remain out of scope.
+
 ## Wave 1C.14 — Production integration of the iterative evaluator
 
 - **Branch:** `main` (published; `fix/wave1c-correction` is kept as history)
