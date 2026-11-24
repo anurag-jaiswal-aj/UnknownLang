@@ -2,6 +2,19 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.1.2 — Runtime Semantics Versioning Correction
+- **Branch:** `main`
+- **Status:** Foundation closure. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Version increment:** `RUNTIME_SEMANTICS_VERSION` `1` → `2`
+- **Reason:** Correction to observable last-expression-result semantics (F1 correction).
+- **Identity impact:** New environment IDs will include version `2`; old environment records retain version `1`.
+- **Commits:** `c298429` base, version increment to be staged.
+- **Validation:** 1,166 tests passed, exit code 0. Focused F1 and identity tests passed. `git diff --check` passed.
+- **Remaining limitations:**
+  - Python 3.11–3.13: unavailable (Lark not installed in those interpreter environments)
+  - `invalid_program` boundary migration: deferred until a benchmark boundary exists
+  - Official and untrusted execution: blocked without Docker/WASM isolation
+
 ## Wave 2.1.1 — Runtime foundation acceptance closure
 - **Branch:** `main`
 - **Status:** Foundation closure complete for the bounded scope. Trusted-local development only.

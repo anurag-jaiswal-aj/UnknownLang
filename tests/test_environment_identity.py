@@ -14,6 +14,34 @@ PROFILE = {
 }
 
 
+def test_runtime_version_is_two():
+    assert RUNTIME_SEMANTICS_VERSION == 2, "Runtime version 2 reflects F1 correction"
+
+
+def test_runtime_version_change_changes_environment_id():
+    """Verify that changing runtime_semantics_version produces a different environment ID.
+
+    This test uses canonical_json to construct identity cores with different versions
+    while keeping all other fields identical, then verifies the SHA256 hash changes.
+    """
+    core_v1 = {
+        "env_schema_version": 1,
+        "generator_family_version": "f1",
+        "generator_algorithm_version": "1.0.0",
+        "grammar_sha256": "a" * 64,
+        "semantic_spec_sha256": "b" * 64,
+        "surface_profile_sha256": "c" * 64,
+        "runtime_semantics_version": 1,
+    }
+    core_v2 = {
+        **core_v1,
+        "runtime_semantics_version": 2,
+    }
+    hash_v1 = sha256_hex(core_v1)
+    hash_v2 = sha256_hex(core_v2)
+    assert hash_v1 != hash_v2, "SHA256 of identity_core must differ when runtime_semantics_version changes"
+
+
 def test_identity_recomputes_from_one_core():
     record = build_environment("wraparound", True, PROFILE)
     assert record.environment_id == "env_" + sha256_hex(record.identity_core)

@@ -37,7 +37,9 @@ DEFAULT_MAX_AST_DEPTH: int = 1_000
 DEFAULT_MAX_CALL_DEPTH: int = 100
 DEFAULT_MAX_OUTPUT_BYTES: int = 1_048_576  # 1 MB
 # Observable execution behavior version used by Wave 2 environment identity.
-RUNTIME_SEMANTICS_VERSION: int = 1
+# Version 1: initial runtime foundation
+# Version 2: corrected last-expression-result semantics (F1 correction)
+RUNTIME_SEMANTICS_VERSION: int = 2
 
 
 class ExecutionError(Exception):
