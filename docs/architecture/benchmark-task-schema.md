@@ -99,8 +99,8 @@ recipe or runtime from silently reusing a scientific environment identity.
 | `identity_core.grammar_sha256` | digest | yes | canonical grammar bytes |
 | `identity_core.semantic_spec_sha256` | digest | yes | complete semantic spec |
 | `identity_core.surface_profile_sha256` | digest | yes | section 4 |
-| `identity_core.semantic_fingerprint` | digest | yes | observable fingerprint, section 3.4 |
-| `identity_core.surface_id` | digest | yes | digest of `surface_profile` |
+| `observable_fingerprint` | digest | no (derived) | hash of grammar, semantic specification and surface profile hashes |
+| `surface_id` | digest | no (derived) | equals `identity_core.surface_profile_sha256` |
 | `identity_core.runtime_semantics_version` | int | yes | section 3.3 |
 | `semantic.arithmetic` | `wraparound` \| `saturating` \| `error-on-overflow` | via fingerprint | |
 | `semantic.short_circuit` | bool | via fingerprint | |
