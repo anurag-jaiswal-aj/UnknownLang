@@ -75,15 +75,22 @@ identity collision.
   "task_set_schema_version": 1,
   "family_version": "f1",
   "blueprint": { "id": "bp1", "version": 1, "slots": [...] },
-  "environments": [
+  "environment_assignments": [
     { "environment_id": "env_...", "split": "dev" | "heldout" }
   ],
+  "task_assignments": [
+    { "environment_id": "env_...", "slot_index": 0, "task_id": "task_..." }
+  ],
+  "pair_groups": ["pair_..."],
   "task_ids": ["task_...", ...]
 }
 ```
 
-The environment/split pairs are sorted by environment ID. Blueprint slots are ordered by slot index.
-Changing a split, family version, blueprint slot, environment, or task changes the ID. The old design
+`task_assignments` is authoritative and binds every task to exactly one `(environment_id, slot_index)`.
+The convenience `task_ids` list must equal its sorted task IDs. `pair_groups` are sorted and included
+so pair membership changes create a new task-set identity. Duplicate task IDs, duplicate slot IDs,
+gapped slots and duplicate environment-slot assignments are rejected. Changing a split, family version,
+blueprint slot, explicit assignment, environment, pair group or task changes the ID. The old design
 hashed only task IDs, a blueprint ID and a schema version, so it could identify reversed dev/held-out
 assignments as the same set. This decision closes that collision.
 

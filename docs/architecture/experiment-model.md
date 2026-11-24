@@ -89,6 +89,27 @@ refuses a privileged adapter in an official run.
 
 The manifest holds no host name, user name, absolute path or environment variable.
 
+### 3.2.1 Manifest-root projection
+
+The first attempt record links to `manifest_root_sha256`, not to a hash of the manifest including its
+own root. The stable manifest projection contains every nonvolatile field, including run ID,
+experiment ID, task-set ID, counts, conformance attestation, commit, official flag, derivation-manifest
+digest and manifest schema version. It excludes `volatile.started_at`, `volatile.finished_at`,
+`volatile.host_os` and the root field itself.
+
+```text
+manifest_root_sha256 = sha256(strict_canonical_json(stable_manifest_projection))
+```
+
+The manifest stores the root and the chain algorithm name. The verifier recomputes the projection,
+checks the root, then checks the first `prev_sha256` and every subsequent chain link. A change to any
+stable field breaks verification. A change only to volatile fields does not.
+
+The immutable task-set attestation must store the conformance digest, derivation-manifest digest,
+family/version fields and split commitment. RP3 uses the derivation manifest to regenerate environments,
+tasks, pair groups, slot assignments and the task set.
+
+
 ### 3.3 Attempt record
 
 One JSON object per line in `attempts.jsonl`.
@@ -352,7 +373,39 @@ flowchart TD
   H --> I
 ```
 
-### 8.3 What is compared
+### 8.3.1 Immutable-record and cross-reference validation
+
+Before RP1 or RP2 execution, the verifier must:
+
+1. parse every immutable environment, task, task-set, pair-group and experiment record;
+2. recompute each canonical content hash and compare filename and embedded ID;
+3. verify environment frozen status and task-to-environment references;
+4. verify task-set slot assignments, split assignments and pair-group membership;
+5. verify prompt, response, submission and reference-cost artifact digests;
+6. recompute and verify the manifest root;
+7. verify the first attempt `prev_sha256` equals the manifest root and every later chain link;
+8. reject missing, malformed, duplicate, stale or cross-referenced records before evaluation.
+
+A failure is an integrity failure, not a replay mismatch or model result.
+
+### 8.3.2 RP2 prompt replay
+
+RP2 rebuilds the public projection and prompt, compares prompt bytes and `prompt_sha256`, then uses a
+`ScriptedAdapter` keyed by prompt digest to return the stored response. Missing or unexpected digest
+lookups, changed extraction, or changed prompt text produce a distinct `replay_mismatch` detail.
+
+### 8.3.3 RP3 regeneration inputs
+
+RP3 requires a content-addressed derivation manifest containing environment seeds/indices, task-set
+seed, task slot indices, rejection decisions, family/algorithm versions, split assignments and pair
+group derivation inputs. RP3 regenerates the dependency graph in order:
+
+environment -> task -> pair group -> task-set -> experiment references.
+
+It compares every identity-bearing digest and reports `missing_derivation`,
+`algorithm_version_mismatch`, `runtime_semantics_version_mismatch` or `regeneration_content_mismatch`
+when appropriate. An unavailable sealed held-out derivation manifest is not a successful replay.
+
 
 Every field marked as hashed in section 3.3 is compared exactly. The `volatile` object is ignored. A
 replay mismatch is a `harness_fault` with detail `replay_mismatch`, and diagnostic D10 counts it. A

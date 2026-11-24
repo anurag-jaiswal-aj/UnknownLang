@@ -457,6 +457,13 @@ The owner must explicitly decide each item:
 - `[ ]` AM-07 execution status migration
 - `[ ]` AM-08 response extraction
 - `[ ]` AM-09 sandbox scope
+- `[ ]` R3.1 50th-percentile hypothesis population, endpoint and non-circular comparison protocol
+- `[ ]` R3.2 grammar/token-diversity complexity hypothesis
+- `[ ]` R3.3 definition of 100 variants per difficulty
+- `[ ]` R4.1 bounded public-source/training-data verification protocol
+- `[ ]` R6.5 collection/string-limit disposition
+- `[ ]` R9.3 public-example and total-test-count policy
+- `[ ]` Requirements 13-19 API, frontend, deployment and demo phase scope
 - `[ ]` F1 definition-only runtime contract
 - `[ ]` F3 Python support and compatibility matrix
 - `[ ]` F5 structured execution-result contract

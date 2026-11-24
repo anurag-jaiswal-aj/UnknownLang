@@ -437,8 +437,13 @@ That keeps task grading clear of the definition-last behavior difference between
 ### 7.4 Limits
 
 ```json
-{ "max_steps": 100000, "max_ast_depth": 1000, "max_call_depth": 100,
-  "max_submission_bytes": 4096, "wall_clock_ms": 2000 }
+{
+  "max_ast_depth": 1000,
+  "max_call_depth": 100,
+  "max_steps": 100000,
+  "max_submission_bytes": 4096,
+  "wall_clock_ms": 2000
+}
 ```
 
 `max_steps`, `max_ast_depth` and `max_call_depth` are the runtime's existing deterministic limits.
@@ -476,12 +481,19 @@ A **task set** is the unit that is run and reported.
 ```text
 { "task_set_id": "tset_<sha256>", "schema_version": 1, "family_version": "f1",
   "blueprint": { "id": "bp1", "version": 1, "slots": [...] },
-  "environments": [ { "environment_id": "env_...", "split": "dev" | "heldout" } ],
-  "tasks": [ "task_..." ] }
+  "environments": [
+    { "environment_id": "env_...", "split": "dev" | "heldout" }
+  ],
+  "task_assignments": [
+    { "environment_id": "env_...", "slot_index": 0, "task_id": "task_..." }
+  ],
+  "tasks": ["task_..."],
+  "pair_groups": ["pair_..."]
+}
 ```
 
-A **blueprint** is a fixed list of slots, each `(category, form, difficulty level, information
-condition, protocol)`. **Every environment in a task set is instantiated from the same blueprint.**
+`task_assignments` is authoritative; the convenience `tasks` list must equal its task IDs. The pair-group
+IDs are sorted and included so pair membership changes create a new task-set identity.
 If a slot cannot be filled for an environment (for example no discriminating query exists), the
 environment is rejected and the next derivation index is tried. This balanced design makes
 environments comparable and lets micro and macro averages agree (see
@@ -565,13 +577,17 @@ means `not`, `rilo` means `eq`, `forge` is `def`, `fork` is `if`, `aye` is `true
 
 ```json
 {
-  "environment_id": "env_97960dff81c1c9376f4def607b14ec9a032cb21c7144d555859941cefc068cd3",
+  "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
   "identity_core": {
     "env_schema_version": 1,
+    "generator_algorithm_version": "1.0.0",
+    "generator_family_version": "f1",
+    "grammar_sha256": "d104c8ec37f6edd0fd91fe1ad627ae09bc5c12722f0b9c935aee6ebde7fa053a",
     "runtime_semantics_version": 1,
-    "semantic_fingerprint": "2fdbd6c732ac31ace435cf50cf2a7c41692b0bfccde43ce7744fb38d390c7a5c",
-    "surface_id": "e93de4929af7b970cc115fabcb8c6b8da26f1ff38eb5ad809918ee5d0e2cc470"
+    "semantic_spec_sha256": "1967d0b376065d47700cf122dadcd7b623b79b426979bd3f161c3756b96a6e21",
+    "surface_profile_sha256": "e93de4929af7b970cc115fabcb8c6b8da26f1ff38eb5ad809918ee5d0e2cc470"
   },
+  "observable_fingerprint": "7da69ef8a1de742ab6b2f32302bf4dfc77d1bf63d021360982c8d715d2126392",
   "runtime": {
     "algorithm_version": "1.0.0",
     "grammar_sha256": "d104c8ec37f6edd0fd91fe1ad627ae09bc5c12722f0b9c935aee6ebde7fa053a",
@@ -582,6 +598,7 @@ means `not`, `rilo` means `eq`, `forge` is `def`, `fork` is `if`, `aye` is `true
     "arithmetic": "wraparound",
     "short_circuit": true
   },
+  "surface_id": "e93de4929af7b970cc115fabcb8c6b8da26f1ff38eb5ad809918ee5d0e2cc470",
   "surface_profile": {
     "keywords": {
       "forge": "def",
@@ -607,10 +624,59 @@ means `not`, `rilo` means `eq`, `forge` is `def`, `fork` is `if`, `aye` is `true
 }
 ```
 
-Environment `B1` has the same surface profile and the same arithmetic mode and differs only in
-`semantic.short_circuit = false`. Its `environment_id` is
-`env_b570d50acf956d1fcd207237d274528aaf3ccaa4e9f977f027a55676f80705a3`. The two share the grammar
-hash and `surface_id` and differ in `semantic_fingerprint`.
+
+
+Environment `B1` is the complete treatment environment record for the paired example. It shares
+the surface profile and arithmetic mode with `A`, but sets `semantic.short_circuit = false`.
+
+```json
+{
+  "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+  "identity_core": {
+    "env_schema_version": 1,
+    "generator_algorithm_version": "1.0.0",
+    "generator_family_version": "f1",
+    "grammar_sha256": "d104c8ec37f6edd0fd91fe1ad627ae09bc5c12722f0b9c935aee6ebde7fa053a",
+    "runtime_semantics_version": 1,
+    "semantic_spec_sha256": "04ab962ebc342c7c3def8d3986de7b5c66e3dcf5828c5caf336d96fcf92feee3",
+    "surface_profile_sha256": "e93de4929af7b970cc115fabcb8c6b8da26f1ff38eb5ad809918ee5d0e2cc470"
+  },
+  "observable_fingerprint": "1b4d649208fb3eab5bcb644ab5214d9c10adebe9e76a614c12db48061c57559a",
+  "runtime": {
+    "algorithm_version": "1.0.0",
+    "grammar_sha256": "d104c8ec37f6edd0fd91fe1ad627ae09bc5c12722f0b9c935aee6ebde7fa053a",
+    "language_id": "lang_c3e990c0b747f2b590971f67e399eb631cb44d4fceaddea827b5827211fb8acc",
+    "spec_version": "1.0.0"
+  },
+  "semantic": {
+    "arithmetic": "wraparound",
+    "short_circuit": false
+  },
+  "surface_id": "e93de4929af7b970cc115fabcb8c6b8da26f1ff38eb5ad809918ee5d0e2cc470",
+  "surface_profile": {
+    "keywords": {
+      "forge": "def",
+      "fork": "if"
+    },
+    "literals": {
+      "aye": "true",
+      "nay": "false"
+    },
+    "operators": {
+      "dwim": "mod",
+      "klet": "mul",
+      "ontu": "not",
+      "prax": "add",
+      "quil": "or",
+      "rilo": "eq",
+      "snel": "div",
+      "vorn": "sub",
+      "zeph": "and"
+    },
+    "profile_schema_version": 1
+  }
+}
+```
 
 ### 12.2 Task 1: operator inference from examples (`INF`)
 
@@ -643,7 +709,7 @@ public result.
     },
     "level": 2
   },
-  "environment_id": "env_97960dff81c1c9376f4def607b14ec9a032cb21c7144d555859941cefc068cd3",
+  "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
   "evaluation": {
     "limits": {
       "max_ast_depth": 1000,
@@ -724,7 +790,7 @@ public result.
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_d8b39b4a758e8637f2014878a3905ffeee7d3db80262fecca75be04c9ed46e2f",
+  "task_id": "task_49269a1563d9a399a975509e3520c09515f550f47c1327cb10758ea0bf8beda0",
   "template": {
     "id": "inf.operator_by_examples",
     "version": 1
@@ -799,7 +865,7 @@ query's `division_by_zero` result.
     },
     "level": 3
   },
-  "environment_id": "env_b570d50acf956d1fcd207237d274528aaf3ccaa4e9f977f027a55676f80705a3",
+  "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
   "evaluation": {
     "limits": {
       "max_ast_depth": 1000,
@@ -853,7 +919,7 @@ query's `division_by_zero` result.
   },
   "protocol": {
     "kind": "paired",
-    "pair_group_id": "pair_f314ca0bf73be4f7c6bef7ae9a6b65d6bbe70566644e772ffa78f056a134b8ce",
+    "pair_group_id": "pair_27e1221579962b913ebdfdfa70f86c61a62cfc7abae6a640521c90e15edc4cea",
     "role": "treatment",
     "varies": [
       "environment:semantic_config",
@@ -861,11 +927,14 @@ query's `division_by_zero` result.
     ]
   },
   "provenance": {
+    "derivation": {
+      "index": 1
+    },
     "generator": "wave2.0-hand-authored-example",
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_6b83a433370dd5b9e37d256a76196e8936b2137f55d766b233ec7e5f4e82dc84",
+  "task_id": "task_e3364c0c15b6ec765a0b8466bb9ff61e6997642111e6bb74b29d2a8cadf35438",
   "template": {
     "id": "ctrl.short_circuit_probe",
     "version": 1
@@ -929,7 +998,7 @@ call depth inside the oracle envelope (gate T11). The primary score is 1 only if
     },
     "level": 2
   },
-  "environment_id": "env_97960dff81c1c9376f4def607b14ec9a032cb21c7144d555859941cefc068cd3",
+  "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
   "evaluation": {
     "limits": {
       "max_ast_depth": 1000,
@@ -1054,7 +1123,7 @@ call depth inside the oracle envelope (gate T11). The primary score is 1 only if
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_9236f8560f51ada6561f0626e7c90fee34da4d76011be490ca84e8cd51c5b271",
+  "task_id": "task_65c1bd599902fec28f5a5641f27eddd236008d564f188e6439f6986042ac766c",
   "template": {
     "id": "rec.sum_to_n",
     "version": 1
@@ -1082,3 +1151,557 @@ call depth inside the oracle envelope (gate T11). The primary score is 1 only if
   M2.2. The only constraints here are gates E1 and E2.
 * Hidden definitions (`input.definitions` with `visibility: hidden`) are specified but have no
   worked example yet.
+
+### 12.5 Complete illustrative pair-group and task-set records
+
+The following records are illustrative and not golden fixtures. They contain a complete control and
+treatment member, one pair-group identity projection, explicit slot assignments and a recomputable
+task-set projection. The records remain outside normative acceptance until a committed validator exists.
+
+#### Pair group
+
+```json
+{
+  "control_task": {
+    "answer_spec": {
+      "allowed_kinds": [
+        "int",
+        "bool",
+        "error"
+      ],
+      "chance_floor_ppm": 0,
+      "error_classes": [
+        "syntax",
+        "name",
+        "arity",
+        "type",
+        "division_by_zero",
+        "overflow",
+        "literal_range",
+        "resource"
+      ],
+      "type": "value"
+    },
+    "category": "CTRL",
+    "difficulty": {
+      "dimensions": {
+        "control_flow": "short_circuit",
+        "nesting_depth": 2,
+        "reasoning_steps": 2,
+        "state": "none"
+      },
+      "level": 3
+    },
+    "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
+    "evaluation": {
+      "limits": {
+        "max_ast_depth": 1000,
+        "max_call_depth": 100,
+        "max_steps": 100000,
+        "max_submission_bytes": 256,
+        "wall_clock_ms": 2000
+      },
+      "method": "exact_match"
+    },
+    "expected": {
+      "kind": "value",
+      "value": {
+        "kind": "bool",
+        "value": false
+      }
+    },
+    "information_condition": "FULL_DOC",
+    "prompt": {
+      "example_policy": "neutral",
+      "public_examples": [
+        {
+          "program": "(zeph nay (prax 1 2))",
+          "result": {
+            "kind": "bool",
+            "value": false
+          }
+        },
+        {
+          "program": "(ontu nay)",
+          "result": {
+            "kind": "bool",
+            "value": true
+          }
+        }
+      ],
+      "query": {
+        "program": "(zeph nay (snel 1 0))"
+      },
+      "template": {
+        "id": "prompt.answer",
+        "version": 1
+      }
+    },
+    "protocol": {
+      "kind": "paired",
+      "pair_group_id": "pair_27e1221579962b913ebdfdfa70f86c61a62cfc7abae6a640521c90e15edc4cea",
+      "role": "control",
+      "varies": [
+        "environment:semantic_config",
+        "information_condition"
+      ]
+    },
+    "provenance": {
+      "derivation": {
+        "index": 0
+      },
+      "generator": "wave2.0-hand-authored-example",
+      "generator_version": 0
+    },
+    "schema_version": 1,
+    "task_id": "task_8d0a9a319962c4b7602e81b3b1c2c7a5c5f55417dc7c19dccbe78856d2fe3786",
+    "template": {
+      "id": "ctrl.short_circuit_probe",
+      "version": 1
+    },
+    "verification": {
+      "agree": true,
+      "gates": {
+        "base_expected": {
+          "kind": "bool",
+          "value": false
+        },
+        "discriminating_vs_base": true
+      },
+      "sources": [
+        {
+          "name": "production",
+          "result": {
+            "error_class": "division_by_zero",
+            "kind": "error"
+          }
+        },
+        {
+          "name": "reference",
+          "result": {
+            "error_class": "division_by_zero",
+            "kind": "error"
+          }
+        }
+      ]
+    }
+  },
+  "pair_group_id": "pair_27e1221579962b913ebdfdfa70f86c61a62cfc7abae6a640521c90e15edc4cea",
+  "projection": {
+    "category": "CTRL",
+    "difficulty": {
+      "control_flow": "short_circuit",
+      "nesting_depth": 2,
+      "reasoning_steps": 2,
+      "state": "none"
+    },
+    "members": [
+      {
+        "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
+        "example_policy": "neutral",
+        "information_condition": "FULL_DOC",
+        "query_projection": {
+          "canonical_program": "(and false (div 1 0))",
+          "surface_program": "(zeph nay (snel 1 0))"
+        },
+        "role": "control",
+        "task_projection": {
+          "answer_spec": {
+            "allowed_kinds": [
+              "int",
+              "bool",
+              "error"
+            ],
+            "chance_floor_ppm": 0,
+            "error_classes": [
+              "syntax",
+              "name",
+              "arity",
+              "type",
+              "division_by_zero",
+              "overflow",
+              "literal_range",
+              "resource"
+            ],
+            "type": "value"
+          },
+          "category": "CTRL",
+          "difficulty": {
+            "dimensions": {
+              "control_flow": "short_circuit",
+              "nesting_depth": 2,
+              "reasoning_steps": 2,
+              "state": "none"
+            },
+            "level": 3
+          },
+          "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
+          "evaluation": {
+            "limits": {
+              "max_ast_depth": 1000,
+              "max_call_depth": 100,
+              "max_steps": 100000,
+              "max_submission_bytes": 256,
+              "wall_clock_ms": 2000
+            },
+            "method": "exact_match"
+          },
+          "information_condition": "FULL_DOC",
+          "prompt": {
+            "example_policy": "neutral",
+            "public_examples": [
+              {
+                "program": "(zeph nay (prax 1 2))",
+                "result": {
+                  "kind": "bool",
+                  "value": false
+                }
+              },
+              {
+                "program": "(ontu nay)",
+                "result": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            ],
+            "query": {
+              "program": "(zeph nay (snel 1 0))"
+            },
+            "template": {
+              "id": "prompt.answer",
+              "version": 1
+            }
+          },
+          "protocol": {
+            "kind": "paired",
+            "varies": [
+              "environment:semantic_config",
+              "information_condition"
+            ]
+          },
+          "schema_version": 1,
+          "template": {
+            "id": "ctrl.short_circuit_probe",
+            "version": 1
+          }
+        }
+      },
+      {
+        "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+        "example_policy": "neutral",
+        "information_condition": "STALE_DOC_EXAMPLES",
+        "query_projection": {
+          "canonical_program": "(and false (div 1 0))",
+          "surface_program": "(zeph nay (snel 1 0))"
+        },
+        "role": "treatment",
+        "task_projection": {
+          "answer_spec": {
+            "allowed_kinds": [
+              "int",
+              "bool",
+              "error"
+            ],
+            "chance_floor_ppm": 0,
+            "error_classes": [
+              "syntax",
+              "name",
+              "arity",
+              "type",
+              "division_by_zero",
+              "overflow",
+              "literal_range",
+              "resource"
+            ],
+            "type": "value"
+          },
+          "category": "CTRL",
+          "difficulty": {
+            "dimensions": {
+              "control_flow": "short_circuit",
+              "nesting_depth": 2,
+              "reasoning_steps": 2,
+              "state": "none"
+            },
+            "level": 3
+          },
+          "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+          "evaluation": {
+            "limits": {
+              "max_ast_depth": 1000,
+              "max_call_depth": 100,
+              "max_steps": 100000,
+              "max_submission_bytes": 256,
+              "wall_clock_ms": 2000
+            },
+            "method": "exact_match"
+          },
+          "information_condition": "STALE_DOC_EXAMPLES",
+          "prompt": {
+            "example_policy": "neutral",
+            "public_examples": [
+              {
+                "program": "(zeph aye (prax 1 2))",
+                "result": {
+                  "error_class": "type",
+                  "kind": "error"
+                }
+              },
+              {
+                "program": "(zeph nay (prax 1 2))",
+                "result": {
+                  "error_class": "type",
+                  "kind": "error"
+                }
+              },
+              {
+                "program": "(ontu nay)",
+                "result": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            ],
+            "query": {
+              "program": "(zeph nay (snel 1 0))"
+            },
+            "template": {
+              "id": "prompt.answer",
+              "version": 1
+            }
+          },
+          "protocol": {
+            "kind": "paired",
+            "varies": [
+              "environment:semantic_config",
+              "information_condition"
+            ]
+          },
+          "schema_version": 1,
+          "template": {
+            "id": "ctrl.short_circuit_probe",
+            "version": 1
+          }
+        }
+      }
+    ],
+    "pair_schema_version": 1,
+    "template": {
+      "id": "ctrl.short_circuit_probe",
+      "version": 1
+    },
+    "varies": [
+      "environment:semantic_config",
+      "information_condition"
+    ]
+  },
+  "treatment_task": {
+    "answer_spec": {
+      "allowed_kinds": [
+        "int",
+        "bool",
+        "error"
+      ],
+      "chance_floor_ppm": 0,
+      "error_classes": [
+        "syntax",
+        "name",
+        "arity",
+        "type",
+        "division_by_zero",
+        "overflow",
+        "literal_range",
+        "resource"
+      ],
+      "type": "value"
+    },
+    "category": "CTRL",
+    "difficulty": {
+      "dimensions": {
+        "control_flow": "short_circuit",
+        "nesting_depth": 2,
+        "reasoning_steps": 2,
+        "state": "none"
+      },
+      "level": 3
+    },
+    "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+    "evaluation": {
+      "limits": {
+        "max_ast_depth": 1000,
+        "max_call_depth": 100,
+        "max_steps": 100000,
+        "max_submission_bytes": 256,
+        "wall_clock_ms": 2000
+      },
+      "method": "exact_match"
+    },
+    "expected": {
+      "kind": "value",
+      "value": {
+        "error_class": "division_by_zero",
+        "kind": "error"
+      }
+    },
+    "information_condition": "STALE_DOC_EXAMPLES",
+    "prompt": {
+      "example_policy": "neutral",
+      "public_examples": [
+        {
+          "program": "(zeph aye (prax 1 2))",
+          "result": {
+            "error_class": "type",
+            "kind": "error"
+          }
+        },
+        {
+          "program": "(zeph nay (prax 1 2))",
+          "result": {
+            "error_class": "type",
+            "kind": "error"
+          }
+        },
+        {
+          "program": "(ontu nay)",
+          "result": {
+            "kind": "bool",
+            "value": true
+          }
+        }
+      ],
+      "query": {
+        "program": "(zeph nay (snel 1 0))"
+      },
+      "template": {
+        "id": "prompt.answer",
+        "version": 1
+      }
+    },
+    "protocol": {
+      "kind": "paired",
+      "pair_group_id": "pair_27e1221579962b913ebdfdfa70f86c61a62cfc7abae6a640521c90e15edc4cea",
+      "role": "treatment",
+      "varies": [
+        "environment:semantic_config",
+        "information_condition"
+      ]
+    },
+    "provenance": {
+      "derivation": {
+        "index": 1
+      },
+      "generator": "wave2.0-hand-authored-example",
+      "generator_version": 0
+    },
+    "schema_version": 1,
+    "task_id": "task_e3364c0c15b6ec765a0b8466bb9ff61e6997642111e6bb74b29d2a8cadf35438",
+    "template": {
+      "id": "ctrl.short_circuit_probe",
+      "version": 1
+    },
+    "verification": {
+      "agree": true,
+      "gates": {
+        "base_expected": {
+          "kind": "bool",
+          "value": false
+        },
+        "discriminating_vs_base": true
+      },
+      "sources": [
+        {
+          "name": "production",
+          "result": {
+            "error_class": "division_by_zero",
+            "kind": "error"
+          }
+        },
+        {
+          "name": "reference",
+          "result": {
+            "error_class": "division_by_zero",
+            "kind": "error"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Task set
+
+```json
+{
+  "blueprint": {
+    "id": "bp-ctrl-demo",
+    "slots": [
+      {
+        "category": "CTRL",
+        "difficulty_dimensions": {
+          "control_flow": "short_circuit",
+          "nesting_depth": 2,
+          "reasoning_steps": 2,
+          "state": "none"
+        },
+        "difficulty_level": 3,
+        "form": "value",
+        "information_condition": "FULL_DOC",
+        "protocol": {
+          "kind": "paired"
+        },
+        "slot_id": "slot-ctrl-000",
+        "slot_index": 0,
+        "task_weight": 1
+      }
+    ],
+    "version": 1,
+    "weight_function": {
+      "id": "uniform",
+      "version": 1
+    }
+  },
+  "environment_assignments": [
+    {
+      "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+      "split": "heldout"
+    },
+    {
+      "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
+      "split": "dev"
+    }
+  ],
+  "family_version": "f1",
+  "pair_groups": [
+    "pair_27e1221579962b913ebdfdfa70f86c61a62cfc7abae6a640521c90e15edc4cea"
+  ],
+  "provenance": {
+    "generator": "illustrative-only",
+    "generator_version": 0
+  },
+  "task_assignments": [
+    {
+      "environment_id": "env_85b07c528874bcb90fa855449040b2afc2d380ad942befef45c69833d0ebc2a9",
+      "slot_index": 0,
+      "task_id": "task_e3364c0c15b6ec765a0b8466bb9ff61e6997642111e6bb74b29d2a8cadf35438"
+    },
+    {
+      "environment_id": "env_ca1b2f4bde537c0b6089bffa53450a08d3c1bb1d1335eb3fa427a98d1175f21c",
+      "slot_index": 0,
+      "task_id": "task_8d0a9a319962c4b7602e81b3b1c2c7a5c5f55417dc7c19dccbe78856d2fe3786"
+    }
+  ],
+  "task_set_id": "tset_e36a9a281a30ddb813565637049ab2105af8a226c26eef98c56916973247ac18",
+  "task_set_schema_version": 1,
+  "tasks": [
+    "task_8d0a9a319962c4b7602e81b3b1c2c7a5c5f55417dc7c19dccbe78856d2fe3786",
+    "task_e3364c0c15b6ec765a0b8466bb9ff61e6997642111e6bb74b29d2a8cadf35438"
+  ]
+}
+```
+
+The task-set projection binds each task to `(environment_id, slot_index)`. Reversing those assignments,
+changing the blueprint slot, changing a split, or changing the pair-group member list changes
+`task_set_id`. Duplicate task IDs, duplicate assignments and missing control/treatment members are
+invalid.
