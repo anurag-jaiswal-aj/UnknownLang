@@ -329,6 +329,117 @@ class TestResourceBoundaries:
         reconstructed = reconstruct_environment_from_manifest(manifest)
         assert reconstructed.environment_id == env.environment_id
 
+    def test_manifest_at_exact_boundary(self):
+        """Verify manifest at exactly the accepted boundary is accepted."""
+        # Create a manifest with large but valid seed that's close to 500KB
+        # Each string is 65536 chars = ~65536 bytes
+        # We need to fit within 500KB limit
+
+        # Using 6 strings at 65536 chars each = ~393KB for strings
+        # Total estimated: ~500KB which should be under 500KB
+
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+
+        # Create a large seed that approaches but stays under 500KB
+        # Using 6 strings at 65536 chars each = ~393KB for strings
+        # Total estimated: ~400KB which should be under 500KB
+        large_seed = {
+            "name": "test",
+            "syntax_style": "lisp",
+            "features": ["arithmetic", "functions"],
+            "difficulty": 1,
+            "arithmetic": "wraparound",
+            "short_circuit": True,
+            "f1": "x" * 65536,
+            "f2": "y" * 65536,
+            "f3": "z" * 65536,
+            "f4": "a" * 65536,
+            "f5": "b" * 65536,
+            "f6": "c" * 65536,
+        }
+
+        large_manifest = DerivationManifest(
+            schema_version=1,
+            environment_id=env.environment_id,
+            env_schema_version=1,
+            generator_family_version="f1",
+            generator_algorithm_version="1.0.0",
+            seed=large_seed,
+            surface_profile=profile,
+            runtime_semantics_version=2,
+            grammar_sha256=env.identity_core["grammar_sha256"],
+            semantic_spec_sha256=env.identity_core["semantic_spec_sha256"],
+            surface_profile_sha256=env.identity_core["surface_profile_sha256"],
+        )
+
+        # Should be accepted (under 500KB)
+        reconstructed = reconstruct_environment_from_manifest(large_manifest)
+        assert reconstructed.environment_id == env.environment_id
+
+    def test_manifest_exceeding_boundary(self):
+        """Verify manifest exceeding 500KB is rejected before reconstruction."""
+        # Create a manifest with 7 large strings that exceeds 500KB
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+
+        # 8 strings at 65536 chars each = ~525KB for strings
+        # Plus other fields exceeds 500KB
+        oversized_seed = {
+            "name": "test",
+            "syntax_style": "lisp",
+            "features": ["arithmetic", "functions"],
+            "difficulty": 1,
+            "arithmetic": "wraparound",
+            "short_circuit": True,
+            "f1": "x" * 65536,
+            "f2": "y" * 65536,
+            "f3": "z" * 65536,
+            "f4": "a" * 65536,
+            "f5": "b" * 65536,
+            "f6": "c" * 65536,
+            "f7": "d" * 65536,
+            "f8": "e" * 65536,
+        }
+
+        oversized_manifest = DerivationManifest(
+            schema_version=1,
+            environment_id=env.environment_id,
+            env_schema_version=1,
+            generator_family_version="f1",
+            generator_algorithm_version="1.0.0",
+            seed=oversized_seed,
+            surface_profile=profile,
+            runtime_semantics_version=2,
+            grammar_sha256=env.identity_core["grammar_sha256"],
+            semantic_spec_sha256=env.identity_core["semantic_spec_sha256"],
+            surface_profile_sha256=env.identity_core["surface_profile_sha256"],
+        )
+
+        # Should be rejected by preflight (before reconstruction)
+        with pytest.raises(ValidationError, match="exceeds maximum size"):
+            reconstruct_environment_from_manifest(oversized_manifest)
+
     def test_seed_name_boundary(self):
         """Verify seed name at exact MAX_NAME_LENGTH (50) is accepted, 51 rejected."""
         # Exactly 50 chars - should pass

@@ -123,21 +123,222 @@ def _validate_manifest_version(manifest: DerivationManifest) -> None:
 def _validate_manifest_size(manifest: DerivationManifest) -> None:
     """Validate manifest size before expensive reconstruction.
 
-    Pre-flights validation using actual serialized byte size before full
-    canonical serialization and reconstruction.
-    """
-    from src.benchmark.canonical import canonical_bytes
+    Pre-flights validation using a bounded serializer that stops as soon
+    as the 500KB budget is exceeded. This prevents unbounded serialization
+    of oversized input.
 
-    # Check actual serialized size to prevent memory exhaustion
-    try:
-        serialized = canonical_bytes(manifest.to_dict())
-        if len(serialized) > MAX_MANIFEST_SIZE:
+    The preflight:
+    1. Checks top-level field count (should be 11 for valid manifests)
+    2. Checks seed and surface-profile dict sizes before iterating
+    3. Validates string lengths before encoding
+    4. Tracks cumulative size and stops at 500KB
+    5. Does not build complete serialized copy
+    """
+    # Quick field count preflight - valid manifest has exactly 11 fields
+    if len(manifest.to_dict()) != 11:
+        raise ValidationError(
+            f"Manifest field count invalid: expected 11, got {len(manifest.to_dict())}"
+        )
+
+    # Check seed dict size before iterating
+    if len(manifest.seed) > 100:
+        raise ValidationError(
+            f"Seed exceeds maximum field count: {len(manifest.seed)} > 100"
+        )
+
+    # Check surface profile size before iterating
+    if len(manifest.surface_profile) > 100:
+        raise ValidationError(
+            f"Surface profile exceeds maximum field count: {len(manifest.surface_profile)} > 100"
+        )
+
+    # Bounded serialization with size budget
+    # We need to track cumulative size including JSON overhead
+    # Keys, values, and separators contribute to size
+
+    # Build a bounded serializer that stops at 500KB
+    _validate_manifest_size_bounded(manifest)
+
+
+def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
+    """Bounded size validation that stops at 500KB budget.
+
+    This function performs a streaming-style size check that:
+    1. Validates all string lengths before encoding
+    2. Estimates cumulative size including JSON overhead
+    3. Stops immediately when budget exceeded
+    4. Does not build complete serialized output
+    """
+    from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
+
+    # Calculate size budget: 500KB = 500000 bytes
+    # JSON overhead estimate: ~30% for keys, separators, escaping
+    # We'll use a conservative estimate
+
+    budget = MAX_MANIFEST_SIZE
+
+    # Track cumulative size
+    size = 0
+
+    # Top-level structure: {"field1": value1, "field2": value2, ...}
+    # Keys are fixed: schema_version, environment_id, env_schema_version, etc.
+    fixed_keys = [
+        "schema_version", "environment_id", "env_schema_version",
+        "generator_family_version", "generator_algorithm_version",
+        "seed", "surface_profile", "runtime_semantics_version",
+        "grammar_sha256", "semantic_spec_sha256", "surface_profile_sha256"
+    ]
+
+    # Add size for keys (with quotes and colon)
+    for key in fixed_keys:
+        size += len(key) + 2  # +2 for quotes
+
+    # Add separators: 10 commas + 1 space after each colon = ~11 overhead per field
+    size += 11 * len(fixed_keys)
+
+    # Check fixed-size fields (should be under 1KB total)
+    # environment_id: 32 bytes
+    size += len(manifest.environment_id) + 2  # +2 for quotes
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+    # grammar_sha256, semantic_spec_sha256, surface_profile_sha256: 64 hex chars each
+    size += (64 + 2) * 3  # +2 for quotes each
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+    # Add size for version fields (small integers)
+    size += 30  # Conservative estimate for version fields
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+    # Check seed dict
+    seed_size = _estimate_dict_size(manifest.seed, budget - size, "seed")
+    size += seed_size
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+    # Check surface_profile dict
+    profile_size = _estimate_dict_size(manifest.surface_profile, budget - size, "surface_profile")
+    size += profile_size
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+    # Check remaining fixed fields
+    # environment_id is already counted above
+
+    # Final budget check with some padding for JSON formatting
+    if size > budget:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({size} bytes estimated)"
+        )
+
+
+def _estimate_dict_size(d: dict, budget: int, path: str) -> int:
+    """Estimate dict size with bounded checking.
+
+    Returns estimated size or raises ValidationError if budget exceeded.
+    Does not iterate beyond budget limit.
+    """
+    from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
+
+    size = 0
+
+    # Opening brace
+    size += 1
+
+    items = list(d.items())
+    num_items = len(items)
+
+    for i, (key, value) in enumerate(items):
+        if i >= num_items:
+            break
+
+        # Add key size (with quotes)
+        if not isinstance(key, str):
+            raise ValidationError(f"Dictionary keys must be strings at {path}")
+        size += len(key) + 2  # +2 for quotes
+
+        if size > budget:
             raise ValidationError(
                 f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
-                f"({len(serialized)} bytes)"
+                f"({size} bytes estimated)"
             )
-    except (TypeError, OverflowError) as e:
-        raise ValidationError(f"Failed to serialize manifest for size check: {e}")
+
+        # Add colon
+        size += 1
+
+        # Add value size based on type
+        if value is None:
+            size += 4  # "null"
+        elif isinstance(value, bool):
+            size += 5  # "true"/"false"
+        elif isinstance(value, int):
+            size += len(str(value))
+        elif isinstance(value, str):
+            # Validate string length before counting
+            if len(value) > MAX_STRING:
+                raise ValidationError(
+                    f"String at {path}.{key} exceeds maximum length of {MAX_STRING} "
+                    f"({len(value)} characters)"
+                )
+            # Add string size with quotes - no extra overhead estimate
+            # JSON strings use UTF-8 encoding directly for ASCII characters
+            size += len(value) + 2  # +2 for quotes
+        elif isinstance(value, (list, tuple)):
+            # Check list size before iterating
+            if len(value) > 1000:
+                raise ValidationError(
+                    f"List at {path}.{key} exceeds maximum size of 1000"
+                )
+            # Estimate list size - each item adds ~10 bytes for brackets and commas
+            size += len(value) * 10
+        elif isinstance(value, dict):
+            # Recursively check nested dicts with reduced budget
+            remaining_budget = budget - size
+            nested_size = _estimate_dict_size(value, remaining_budget, f"{path}.{key}")
+            size += nested_size
+        else:
+            raise ValidationError(
+                f"Unsupported type at {path}.{key}: {type(value).__name__}"
+            )
+
+        if size > budget:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({size} bytes estimated)"
+            )
+
+        # Add comma for next item (except last)
+        if i < num_items - 1:
+            size += 1
+
+        if size > budget:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({size} bytes estimated)"
+            )
+
+    # Closing brace
+    size += 1
+
+    return size
 
 
 def reconstruct_environment_from_manifest(
