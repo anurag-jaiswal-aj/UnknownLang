@@ -9,13 +9,13 @@ Covers, independently of the evaluator's own frame loop:
   * Signed 64-bit arithmetic boundaries in all three overflow modes.
   * Parse-error handling.
   * Reproducible differential parity against the independent ReferenceEvaluator (src/oracle), with the
-    known reference defect isolated (see KNOWN_REFERENCE_DEFECT).
+    the canonical INT64_MIN / -1 program included (see TestReferenceMatchesTheCanonicalInt64Contract).
 
 Decisions recorded by the user for this wave:
   1. IF expression, condition expression and selected branch are separate expression
      nodes, each charged exactly one step. Nothing is charged twice.
-  2. The signed 64-bit language contract overrides the reference engine for
-     INT64_MIN / -1.
+  2. The signed 64-bit language contract overrides any evaluator for INT64_MIN / -1
+     (the reference evaluator had to be corrected to match it in Wave 1C.14).
   3. Semantic expression-node counting is canonical.
 """
 
@@ -276,7 +276,7 @@ def _run_arith(evaluator, mode, expr):
 
 
 class TestInt64MinDividedByMinusOne:
-    """The canonical language result. The reference engine is wrong here (see below)."""
+    """The canonical language result, now also produced by the reference evaluator."""
 
     def test_wraparound_yields_int64_min(self, evaluator):
         r = _run_arith(evaluator, "wraparound", f"(div {INT64_MIN} -1)")
@@ -486,6 +486,7 @@ PARITY_CORPUS = [
     "(mod 7 2)", "(mod -7 2)", "(mod 7 -2)", "(mod -7 -2)",
     f"(add {INT64_MAX} 1)", f"(sub {INT64_MIN} 1)", f"(mul {INT64_MAX} 2)", f"(mul {INT64_MIN} -1)",
     f"(mod {INT64_MIN} -1)", f"(div {INT64_MAX} -1)",
+    f"(div {INT64_MIN} -1)",
     "(div 1 0)", "(mod 1 0)", "(add true 1)", "(add 1 true)",
     # booleans, strict typing
     "(and true true)", "(and true false)", "(and false true)", "(and false false)",
@@ -518,6 +519,8 @@ PARITY_CORPUS = [
     "(def f (x) (div x 0))\n(f 1)",
     "(def f (x) (add x unknown))\n(f 1)",
     "(def f (x) x)\n(f 1 2)", "(def f (x y) x)\n(f 1)",
+    # lexical scoping: a callee must not see its caller's variables (both must error)
+    "(def f (y) (add x y))\n(def g (x) (f 1))\n(g 5)",
     "(f 1)\n(def f (x) x)", "(nope 1)", "x",
     "(add 1 2)\n9",
     "(add 1",
@@ -552,31 +555,33 @@ class TestDifferentialParity:
         assert statuses.count("success") > 50 and statuses.count("error") > 15
 
 
-# Programs where the reference engine is KNOWN to be wrong. They are excluded from the
-# corpus above and covered by the canonical tests in TestInt64MinDividedByMinusOne.
-KNOWN_REFERENCE_DEFECT = [f"(div {INT64_MIN} -1)"]
+class TestReferenceMatchesTheCanonicalInt64Contract:
+    """The reference evaluator's INT64_MIN / -1 defect (it returned +2**63 in wraparound and
+    saturating modes) was fixed in Wave 1C.14, independently of the iterative evaluator
+    (a modular shift rather than a bit mask). These tests replace the two strict xfails
+    that documented it, and the program is now part of the differential corpus too."""
 
+    CANONICAL = {"wraparound": ("success", INT64_MIN), "saturating": ("success", INT64_MAX),
+                 "error-on-overflow": ("error", None)}
 
-class TestKnownReferenceEngineDefect:
-    """KNOWN DEFECT (ReferenceEvaluator, src/oracle/reference_evaluator.py `_apply_division`):
-    INT64_MIN / -1 returns +2**63 in wraparound and saturating modes. That value is not
-    a signed 64-bit integer. Only error-on-overflow handles the case. ReferenceEvaluator is
-    out of scope for this milestone and has NOT been changed.
+    @pytest.mark.parametrize("mode", MODES)
+    def test_reference_result_is_the_canonical_one(self, mode):
+        r = ReferenceEvaluator().execute(f"(div {INT64_MIN} -1)", _lang(arithmetic=mode))
+        assert (r.status, r.value) == self.CANONICAL[mode]
+        if r.status == "error":
+            assert "overflow" in r.error_message.lower()
 
-    These are strict xfails: they document the defect today and will fail loudly (XPASS)
-    the moment the engine is fixed, which is the cue to delete them."""
-
-    @pytest.mark.xfail(strict=True, reason="Known reference defect: out-of-range INT64_MIN / -1")
-    @pytest.mark.parametrize("mode", ["wraparound", "saturating"])
-    def test_reference_result_should_be_in_int64_range(self, mode):
-        r = ReferenceEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], _lang(arithmetic=mode))
-        assert INT64_MIN <= r.value <= INT64_MAX
-
-    @pytest.mark.parametrize("mode", ["wraparound", "saturating"])
-    def test_defect_is_present_and_confined_to_reference(self, mode):
-        """Pins the exact discrepancy so any change in either engine is noticed."""
+    @pytest.mark.parametrize("mode", MODES)
+    def test_both_evaluators_agree_on_the_canonical_result(self, mode):
         lang = _lang(arithmetic=mode)
-        ref = ReferenceEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], lang)
-        ours = IterativeEvaluator().execute(KNOWN_REFERENCE_DEFECT[0], lang)
-        assert ref.value == 2 ** 63
-        assert ours.value == (INT64_MIN if mode == "wraparound" else INT64_MAX)
+        program = f"(div {INT64_MIN} -1)"
+        ref = ReferenceEvaluator().execute(program, lang)
+        ours = IterativeEvaluator().execute(program, lang)
+        assert (ref.status, ref.value) == (ours.status, ours.value) == self.CANONICAL[mode]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_reference_division_stays_in_range_for_every_neighbour(self, mode):
+        for a, b, want in [(INT64_MAX, -1, -INT64_MAX), (INT64_MIN, 1, INT64_MIN),
+                           (INT64_MIN + 1, -1, INT64_MAX), (INT64_MIN, 2, -(2 ** 62))]:
+            r = ReferenceEvaluator().execute(f"(div {a} {b})", _lang(arithmetic=mode))
+            assert (r.status, r.value) == ("success", want), (mode, a, b)

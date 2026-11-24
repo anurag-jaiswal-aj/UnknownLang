@@ -395,9 +395,15 @@ class ReferenceEvaluator:
         else:
             result = - (abs(a) // abs(b))
 
+        # The only quotient outside signed 64-bit range is INT64_MIN / -1 (= 2**63).
         if mode == "error-on-overflow":
-            if a == MIN_INT64 and b == -1:
+            if result > MAX_INT64 or result < MIN_INT64:
                 raise OverflowError(f"Integer overflow: {a} / {b}")
+        elif mode == "wraparound":
+            # Shift into [0, 2**64), reduce, shift back: 2**63 -> INT64_MIN.
+            result = (result - MIN_INT64) % (2 ** 64) + MIN_INT64
+        elif mode == "saturating":
+            result = min(MAX_INT64, max(MIN_INT64, result))
 
         return result
 
@@ -592,9 +598,9 @@ class ReferenceEvaluator:
                     f"Function '{func_name}' expected {len(params)} arguments, got {len(evaluated_args)}"
                 )
 
-            # Create new bindings with function parameters
-            new_bindings = dict(context.bindings)
-            new_bindings.update(zip(params, evaluated_args))
+            # Lexical scoping (design.md, semantics.scoping = "lexical"): the body sees ONLY
+            # its own parameters. Variables of the caller are deliberately not inherited.
+            new_bindings = dict(zip(params, evaluated_args))
 
             # Evaluate body with new bindings
             result = self._eval(body, context.with_bindings(new_bindings), language_spec)
