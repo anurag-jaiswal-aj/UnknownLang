@@ -288,7 +288,8 @@ class TestShortCircuitModeMapping:
         
         assert spec.operations["and"].semantic_mode == "eager"
         assert spec.operations["or"].semantic_mode == "eager"
-        assert spec.operations["if"].semantic_mode == "eager"
+        # if always uses short-circuit (lazy) mode: it evaluates only the selected branch
+        assert spec.operations["if"].semantic_mode == "short-circuit"
 
     def test_non_short_circuit_operations_stay_strict(self):
         """Non-short-circuit operations should use strict mode."""
@@ -402,11 +403,12 @@ def test_hypothesis_semantic_spec_consistency(arithmetic, short_circuit):
     assert spec.operations["div"].semantic_mode == "error-on-overflow"
     assert spec.operations["mod"].semantic_mode == "error-on-overflow"
     
-    # Verify boolean operations use short_circuit/eager mode
-    expected_mode = "short-circuit" if short_circuit else "eager"
-    assert spec.operations["and"].semantic_mode == expected_mode
-    assert spec.operations["or"].semantic_mode == expected_mode
-    assert spec.operations["if"].semantic_mode == expected_mode
+    # Boolean operations use short_circuit/eager mode
+    for op_name, expected_mode in [("and", "short-circuit" if short_circuit else "eager"),
+                                   ("or", "short-circuit" if short_circuit else "eager")]:
+        assert spec.operations[op_name].semantic_mode == expected_mode
+    # if always uses short-circuit (lazy) mode: it evaluates only the selected branch
+    assert spec.operations["if"].semantic_mode == "short-circuit"
     
     # Verify strict operations
     assert spec.operations["not"].semantic_mode == "strict"

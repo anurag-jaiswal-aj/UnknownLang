@@ -277,9 +277,13 @@ class SemanticRegistry:
                 # Division and remainder operations use error-on-overflow mode
                 # (handles division by zero, modulo by zero, and overflow errors)
                 mode = "error-on-overflow"
-            elif op_name in {"and", "or", "if"}:
+            elif op_name in {"and", "or"}:
                 # Boolean operations use short-circuit mode based on seed
                 mode = "short-circuit" if seed.short_circuit else "eager"
+            elif op_name == "if":
+                # Conditional expression: always short-circuit (lazy) regardless of boolean mode.
+                # It evaluates only the selected branch, independent of whether and/or are eager.
+                mode = "short-circuit"
             else:
                 # Other operations use strict mode
                 mode = "strict"
