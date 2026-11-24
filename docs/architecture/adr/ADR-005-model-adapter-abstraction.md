@@ -25,9 +25,10 @@ the text of its answer. requirements.md (Requirement 11) names a provider interf
    enforces this.
 6. **Adapters declare `privileged`.** Test agents that need ground truth (an oracle, a prior-semantics
    agent) are privileged. The runner refuses them in official runs and records the flag.
-7. **Mocks come first.** A scripted replay adapter and deterministic strategy agents (constant,
-   seeded random, small integer guesser, garbage, resource bomber, syntax-only, hedger, hard-coder) make the whole benchmark
-   testable without any model.
+7. **Mocks come first for zero-cost validation.** A scripted replay adapter and deterministic strategy
+   agents (constant, seeded random, small integer guesser, garbage, resource bomber, syntax-only,
+   hedger, hard-coder) make the whole benchmark testable without any model. Ollama is the first real
+   provider; an OpenAI-compatible transport follows only as an optional, approved integration.
 8. **No secret is read, stored or logged** by the benchmark in this wave. A local HTTP adapter is a
    later milestone and needs separate approval.
 

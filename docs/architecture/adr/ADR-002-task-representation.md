@@ -15,7 +15,10 @@ factor) without a separate machinery for each comparison.
    canonical record **excluding** `task_id`, `verification`, `provenance` and `notes`. `expected` is
    included (it is the claim). `verification` is excluded (it is evidence for the claim, and adding
    evidence must not change the claim's identity).
-2. **Public and private data are separated by a type.** `project_public(task)` is the only source of
+2. **A task set is also content addressed.** Its identity includes schema and family versions, the
+   complete blueprint/version/slots, sorted `(environment_id, split)` assignments and sorted task IDs.
+   Reversing dev and held-out assignments therefore creates a new set.
+3. **Public and private data are separated by a type.** `project_public(task)` is the only source of
    anything a prompt may use. Hidden tests, `expected`, verification and difficulty never enter it.
 3. **Prompts are derived, not stored.** A task stores structured prompt inputs and the template
    version. The text is built by a versioned builder.
@@ -26,10 +29,12 @@ factor) without a separate machinery for each comparison.
 5. **Two grading methods only.** `exact_match` for values, and `test_suite` for programs. There are
    no per-task Python graders.
 6. **Program tasks accept definitions only.** The harness supplies the final expression.
-7. **Every expected result needs two agreeing sources** among a closed form, the production engine
-   and the reference evaluator. A disagreement invalidates the task.
-8. **Validity gates are part of the schema** (T1 to T15), for example that an adaptation task must
-   actually discriminate between its two environments.
+7. **Every expected result needs production and the independent reference evaluator** within the
+   oracle envelope, plus a closed form when one exists. A task outside the envelope is rejected or
+   deferred, not verified by production plus a closed form alone. A disagreement invalidates the task.
+8. **Validity gates are part of the schema** (T1 to T15 and TS1 to TS4), for example that an adaptation task must
+   actually discriminate between its two environments and that surface-renamed queries translate to
+   the same canonical program.
 
 ## Alternatives considered
 

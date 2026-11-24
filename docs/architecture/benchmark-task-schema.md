@@ -2,9 +2,10 @@
 
 Status: **Proposed. Pending review and approval. Nothing here is implemented.**
 Baseline: Wave 1C.16.1, commit `642b2c8`.
-Companion documents: [overview](wave2-overview.md), [evaluation and scoring](evaluation-and-scoring.md),
-[experiment model](experiment-model.md), [roadmap](roadmap-wave2.md),
-[runtime findings](runtime-findings.md).
+Companion documents: [overview](wave2-overview.md), [decisions](wave2-decisions.md),
+[requirements traceability](requirements-traceability.md), [scoring contract](scoring-contract.md),
+[evaluation and scoring](evaluation-and-scoring.md), [experiment model](experiment-model.md),
+[roadmap](roadmap-wave2.md), [runtime findings](runtime-findings.md).
 
 This document is the single source of truth for identifiers, enumerations and field names. Other
 documents refer to these names and do not redefine them.
@@ -42,8 +43,8 @@ must reject a short-form collision rather than guess.
 | `environment_id` | `env_<sha256>` | `identity_core` of the environment record (section 3) | derivation, provenance, `runtime` cross-references |
 | `surface_id` | `<sha256>` | the surface profile object | nothing |
 | `task_id` | `task_<sha256>` | the task record | `task_id`, `verification`, `provenance`, `notes` |
-| `pair_id` | `pair_<sha256>` | template, query program, `varies`, sorted environment ids | nothing |
-| `task_set_id` | `tset_<sha256>` | sorted task ids, blueprint id, set schema version | nothing |
+| `pair_id` | `pair_<sha256>` | pair-group template/version, category, difficulty dimensions, information condition, protocol variation, canonical query projection, sorted environment ids | nothing |
+| `task_set_id` | `tset_<sha256>` | task-set schema, family version, complete blueprint/version/slots, sorted `(environment_id, split)` assignments, sorted task ids | nothing |
 
 `expected` is part of `task_id` (it is the claim). `verification` is not (it is the evidence for the
 claim). Adding a second verification source later therefore does not change a task's identity.
@@ -82,7 +83,10 @@ Wave 1C.16.1 code (see [runtime findings](runtime-findings.md), F4 and F6):
 * `language_id` does not depend on runtime behavior. The behavior of the same seed changed in
   Waves 1C.15 and 1C.16, and its `language_id` did not.
 
-The environment record therefore hashes what a model can observe, not how the seed was spelled.
+The environment record carries two related fingerprints. `observable_fingerprint` describes the
+byte-identical executable artifact, while `environment_id` also includes generator family/algorithm
+versions and runtime semantics version required to reproduce and interpret it. This prevents a changed
+recipe or runtime from silently reusing a scientific environment identity.
 
 ### 3.2 Fields
 
@@ -90,7 +94,12 @@ The environment record therefore hashes what a model can observe, not how the se
 |---|---|---|---|
 | `environment_id` | string | no (it is the hash) | `env_` + digest of `identity_core` |
 | `identity_core.env_schema_version` | int | yes | |
-| `identity_core.semantic_fingerprint` | digest | yes | section 3.4 |
+| `identity_core.generator_family_version` | string | yes | generator family contract |
+| `identity_core.generator_algorithm_version` | string | yes | generator algorithm contract |
+| `identity_core.grammar_sha256` | digest | yes | canonical grammar bytes |
+| `identity_core.semantic_spec_sha256` | digest | yes | complete semantic spec |
+| `identity_core.surface_profile_sha256` | digest | yes | section 4 |
+| `identity_core.semantic_fingerprint` | digest | yes | observable fingerprint, section 3.4 |
 | `identity_core.surface_id` | digest | yes | digest of `surface_profile` |
 | `identity_core.runtime_semantics_version` | int | yes | section 3.3 |
 | `semantic.arithmetic` | `wraparound` \| `saturating` \| `error-on-overflow` | via fingerprint | |
@@ -120,26 +129,49 @@ the Wave 1C.15 literal range rule or the Wave 1C.16 strict types. It is not bump
 performance work or new tests. A conformance corpus (section 11.3) makes the bump rule checkable:
 if a corpus result changes and the version did not, the test suite fails.
 
-### 3.4 Semantic fingerprint
+### 3.4 Semantic and environment fingerprints
 
 ```
-semantic_fingerprint = sha256(canonical_json({
-  "grammar_sha256": sha256(LanguageSpec.grammar),
-  "semantics": { arithmetic_mode, short_circuit_mode, evaluation_order, scoping, type_coercion },
+semantic_spec_sha256 = sha256(canonical_json({
+  "arithmetic_mode": ..., "short_circuit_mode": ..., "evaluation_order": ...,
+  "scoping": ..., "type_coercion": ...,
   "operations": { <canonical name>: { arity, arg_types, return_type, semantic_mode }, ... }
+}))
+
+observable_fingerprint = sha256(canonical_json({
+  "grammar_sha256": sha256(LanguageSpec.grammar),
+  "semantic_spec_sha256": ..., "surface_profile_sha256": ...
+}))
+
+environment_id = "env_" + sha256(canonical_json({
+  "env_schema_version": 1,
+  "generator_family_version": "f1",
+  "generator_algorithm_version": "1.0.0",
+  "observable_fingerprint": ...,
+  "runtime_semantics_version": 1
 }))
 ```
 
-It contains no name, no timestamp and no seed. Python and Lark versions are deliberately **not** in
-the identity. They are attested separately (section 11.3), because a result that depends on them
-is a defect to detect, not a new environment.
+`observable_fingerprint` detects byte-identical executable environments. `environment_id` is the
+scientific identity and additionally records the generator and runtime versions that produced and
+interpret the environment. It contains no seed name, timestamp or host data. Python and Lark versions
+are attested separately through the conformance corpus.
 
 ### 3.5 Derivation from a seed
 
 A generated environment records `derivation = {family_version, master_seed, index}`. Derivation
-must not depend on Python's `random` module, whose algorithms for `shuffle`, `sample` and `choice`
-have changed between Python versions. Every random decision is instead
-`H(master_seed | purpose | index)`, a SHA-256 digest read as a big integer. Details are in
+must not depend on Python's `random` module. The byte-level stream protocol is:
+
+```text
+encode(seed)    = UTF-8(seed string)
+encode(purpose) = UTF-8(purpose string)
+frame(x)        = uint64_be(len(x)) || x
+input           = b"unknownlang-derive-v1" || frame(encode(seed)) || frame(encode(purpose)) || uint64_be(index)
+digest          = SHA-256(input)
+```
+
+Choice extraction uses rejection sampling from the digest stream, with a documented counter suffix
+when more bytes are required. No modulo-biased choice or process hash is allowed. Details are in
 [ADR-001](adr/ADR-001-environment-identity.md).
 
 ### 3.6 Lifecycle
@@ -439,7 +471,7 @@ A **task set** is the unit that is run and reported.
 
 ```text
 { "task_set_id": "tset_<sha256>", "schema_version": 1, "family_version": "f1",
-  "blueprint_id": "bp1",
+  "blueprint": { "id": "bp1", "version": 1, "slots": [...] },
   "environments": [ { "environment_id": "env_...", "split": "dev" | "heldout" } ],
   "tasks": [ "task_..." ] }
 ```
@@ -479,13 +511,13 @@ The split assigns whole environments to `dev` (public, used for development and 
 | T2 | `task_id` equals the recomputed hash. |
 | T3 | `environment_id` resolves to a `frozen` environment. |
 | T4 | `category` is allowed for `template.id`. |
-| T5 | `expected` is confirmed by at least two independent sources among `closed_form`, `production`, `reference`, and all sources agree. If the reference evaluator is outside its safe envelope (T11) the sources are `closed_form` and `production`. Disagreement makes the task `INVALID` and it is never used (requirements.md, Requirement 8, criterion 6). |
+| T5 | `expected` is confirmed by production and the independent reference evaluator, plus a `closed_form` when available. If the reference is outside its envelope, reject/defer the task; do not silently replace the independent oracle with production plus a closed form. Disagreement makes the task `INVALID` and it is never used (requirements.md, Requirement 8, criterion 6). |
 | T6 | Hidden tests are disjoint from public examples and from the query: no equal canonical call program. |
-| T7 | Paired tasks differ in exactly the fields named in `varies` (section 6.2), and nothing else. |
+| T7 | Paired tasks pass the canonical comparison projection in D-001: exact query text for information/example variations; equal translated canonical query for surface renaming; permitted canonical divergence only for declared operator-meaning changes; all non-varied hashed fields equal. |
 | T8 | Pairs are checked by running both environments. A pair that varies `environment:operator_meaning` or `environment:semantic_config`, alone or together with other factors, must be **discriminating**: the treatment `expected` differs from the control `expected`, otherwise it cannot measure adaptation. A pair that varies only `environment:surface_names`, `information_condition` or `example_policy` must have **equal** `expected` values, because renaming or rewording must not change the answer, and a difference means the pair is not matched. |
 | T9 | Non-triviality: for `value` answers, `expected` is not equal to any literal in the query and not equal to any public example result. |
 | T10 | `chance_floor_ppm` is at most 100000. |
-| T11 | Oracle envelope: the reference solution and all `expected` derivations stay at call depth 40 or less. The reference evaluator was measured at about 75 nested calls under the default Python recursion limit and fewer inside a deep stack, so 40 leaves margin. Larger tasks are verified by `closed_form` and `production`. |
+| T11 | Oracle envelope: every expected result and reference solution stays at call depth 40 or less. Tasks outside the envelope are rejected/deferred, not verified by production plus a closed form alone. The reference evaluator was measured at about 75 nested calls under the default Python recursion limit. |
 | T12 | Leakage lint: no hidden test call, hidden definition source or reference solution text appears anywhere in the prompt built from the public view. |
 | T13 | Identifiability (`INF`): for every surface operator used by the query, the public examples leave exactly one consistent canonical meaning within its type class. |
 | T14 | Every `must_define` name and arity in the answer spec is consistent with the reference solution. |
@@ -788,9 +820,9 @@ from the evidence without any statement of change. Gate T8 holds: the two expect
         }
       },
       {
-        "program": "(quil aye (snel 1 0))",
+        "program": "(zeph nay (prax 1 2))",
         "result": {
-          "error_class": "division_by_zero",
+          "error_class": "type",
           "kind": "error"
         }
       },
@@ -824,7 +856,7 @@ from the evidence without any statement of change. Gate T8 holds: the two expect
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_fa4aaa1b8ee259b8515caee3ae922bf2e8a2c8476cb377c82d8a87544182ac7b",
+  "task_id": "task_0d4bb9712e3e0ca2c4db96dc4391891ced221418b6f0cb49cf80a3ecbf5a0a3e",
   "template": {
     "id": "ctrl.short_circuit_probe",
     "version": 1
@@ -973,7 +1005,7 @@ call depth inside the oracle envelope (gate T11). The primary score is 1 only if
   },
   "expected": {
     "kind": "test_suite",
-    "pass_rule": "all_hidden"
+    "pass_rule": "all_tests"
   },
   "information_condition": "FULL_DOC",
   "prompt": {
@@ -1013,7 +1045,7 @@ call depth inside the oracle envelope (gate T11). The primary score is 1 only if
     "generator_version": 0
   },
   "schema_version": 1,
-  "task_id": "task_8008ad59c9bfab606e3bc35de3a1fafeed0d4126f4aabbae7a2612f932253f0b",
+  "task_id": "task_9236f8560f51ada6561f0626e7c90fee34da4d76011be490ca84e8cd51c5b271",
   "template": {
     "id": "rec.sum_to_n",
     "version": 1

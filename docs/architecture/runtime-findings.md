@@ -87,34 +87,30 @@ contains no other identifier.
 documentation, and consider a word-boundary rule (`/if\b/`) in a future grammar version, which would
 need its own milestone.
 
-## F3. `canonical.py` fails on Python 3.11 to 3.13
+## F3. `canonical.py` and `serializer.py` fail on Python 3.11 to 3.13
 
-**Observed.** Executing the module source on each interpreter:
+**Observed.** Executing the modules on each interpreter:
 
 | Interpreter | Result |
 |---|---|
-| Python 3.11 | `NameError: name 'Optional' is not defined` |
-| Python 3.12 | `NameError: name 'Optional' is not defined` |
-| Python 3.13 | `NameError: name 'Optional' is not defined` |
-| Python 3.14 | imports normally |
+| Python 3.11 | `canonical.py`: `NameError: name 'Optional' is not defined`; `serializer.py`: `NameError: name 'ClassVar' is not defined` |
+| Python 3.12 | same |
+| Python 3.13 | same |
+| Python 3.14 | both import normally |
 
-**Cause.** `canonical_json(obj: Any, indent: Optional[int] = None)` uses `Optional`, which is never
-imported, and the module has no `from __future__ import annotations`. Python 3.14 evaluates
-annotations lazily, so it does not fail. Earlier versions evaluate them at definition time.
+**Cause.** `canonical.py` uses `Optional` without importing it and has no postponed-annotation
+import. `serializer.py` uses `ClassVar` without importing it. Python 3.14 evaluates these annotations
+lazily; earlier versions fail at module definition time.
 
-**Impact.** `pyproject.toml` declares `requires-python = ">=3.11"`, and the code is verified on
-3.14 only. The project's tests pass only on 3.14. This also bears on reproducibility: results from
-different Python versions cannot be compared if one of them cannot import the module. Only this one
-module was checked. Other modules could have similar issues that were not tested, because the other
-interpreters lack Lark.
+**Impact.** `pyproject.toml` declares `requires-python = ">=3.11"`, but the package is not compatible
+with that declaration. The benchmark cannot claim cross-version reproducibility until both imports are
+fixed and a Python 3.11–3.14 matrix passes.
 
-**Design response.** The benchmark's own canonical JSON lives in a new module and does not import
-this one. The design records the Python version in every run manifest and treats 3.14.6 as the
-verified version.
+**Design response.** The Wave 2 canonical module remains separate, and the run manifest records
+Python/Lark versions. This does not repair the existing package contract.
 
-**Recommendation.** Add `from typing import Optional` or `from __future__ import annotations`, and
-run the suite on 3.11 to 3.13, **or** raise `requires-python` to the version actually verified.
-
+**Recommendation.** Add the missing imports or postponed annotations, then run the full test matrix.
+Narrowing `requires-python` is the fallback if older support is intentionally withdrawn.
 ## F4. `language_id` does not depend on runtime behavior
 
 **Observed.** `compute_language_id` hashes the canonical seed, `spec_version` and `algorithm_version`,
@@ -125,13 +121,15 @@ all of which are inputs. The runtime's behavior changed in Waves 1C.15 (literal 
 benchmark whose first requirement is reproducibility (Requirement 20, criteria 1 to 3), that makes
 results incomparable without anyone noticing.
 
-**Design response.** The environment identity includes `runtime_semantics_version`
-([task schema](benchmark-task-schema.md), section 3.3), and the conformance corpus makes a missing
-bump a failing test.
+**Design response.** The Wave 2 environment identity separates an observable fingerprint from a
+scientific identity that includes generator family/algorithm versions and
+`runtime_semantics_version` ([task schema](benchmark-task-schema.md), section 3.4). The conformance
+corpus makes a missing runtime-version bump fail validation.
 
-**Recommendation.** Add an integer constant `RUNTIME_SEMANTICS_VERSION = 1` to the execution package,
-defined as the behavior of commit `642b2c8`, with a rule that it must be bumped when observable
-behavior changes. It is an additive change in milestone M2.1.
+**Recommendation.** Add `RUNTIME_SEMANTICS_VERSION = 1` to the execution package, defined as the
+behavior of commit `642b2c8`, and make the environment manager import it. Define and version the
+byte-framed derivation protocol. Bump the runtime constant whenever observable `(status, value, error
+class)` behavior changes.
 
 ## F5. No structured error kind and no step count
 
@@ -151,9 +149,11 @@ diagnostics need extra runs.
 ([evaluation and scoring](evaluation-and-scoring.md), 3.2). Raw messages are never shown to a model.
 Step efficiency is found by bisection on `max_steps`.
 
-**Recommendation.** Add two optional, backward compatible fields to `ExecutionResult`: `error_kind`
-(an enumeration matching section 6.4 of the task schema) and `steps_used`. Existing callers are
-unaffected. Not required for Wave 2 to work.
+**Recommendation.** Add optional `error_kind`, `error_detail`, `steps_used` and `ast_depth_reached`
+fields after the existing dataclass fields. Keep the current four-key `to_dict()` shape and provide a
+versioned diagnostic serializer. Use the status/error contract in
+[wave2-decisions.md](wave2-decisions.md), D-008. Existing callers remain compatible; the benchmark
+must not classify by free-text messages after structured fields are available.
 
 ## F6. Six distinct languages, three inert seed fields
 

@@ -11,21 +11,22 @@ metric shows is a hypothesis.
 
 ## Decision
 
-1. **The primary score per task is binary.** A program passes only if every public and hidden test
-   passes. A value passes only on exact, type exact equality.
-2. **The headline is the unweighted mean over categories** of pooled accuracy on held-out environments.
-   No difficulty weights, and no combined "adaptation index".
-3. **Capability claims are paired differences** on matched tasks that differ in exactly the manipulated
-   factor, always read together with accuracy.
-4. **Uncertainty is a cluster bootstrap over environments**, with a deterministic resampling stream.
-5. **Failures are a closed taxonomy.** Infrastructure failures are `void` and counted. A run with void
-   attempts is incomplete and never ranked.
-6. **Resource-limit outcomes score 0** and are reported as their own category (specification delta SD5).
-7. **Diagnostics are never merged into the primary score**: partial test pass fraction, the gap
-   between public and hidden tests, syntax validity, the rate of answers matching a stale semantics,
-   step efficiency, response stability.
-8. **Metrics are validated before use**, against deterministic synthetic agents whose behavior is
-   known by construction.
+1. **The task-level correctness score is binary.** A program passes only if every required public and
+   hidden test passes. A value passes only on exact, type-exact equality. Partial test fractions remain
+   diagnostics.
+2. **The report includes the required difficulty-weighted correctness score W** and may include an
+   unweighted held-out accuracy as a separate research headline. No arbitrary combined adaptation index.
+3. **Capability claims are paired differences** on canonical-equivalent matched tasks that differ in
+   exactly the manipulated factor, always read together with accuracy.
+4. **Uncertainty is a deterministic cluster bootstrap**: environments for environment metrics and
+   connected pair components for P3.
+5. **Failures are a closed taxonomy.** Infrastructure and resource outcomes are `void` and counted.
+   A run with void attempts is provisional and cannot be an official ranking.
+6. **Resource-limit outcomes do not score as model failures.** They are excluded from correctness
+   denominators and require an approved official-run resource cap (SD5).
+7. **Diagnostics are never merged into a headline score**: partial test fraction, public/hidden gap,
+   syntax validity, stale semantics, D8 step efficiency and response stability.
+8. **Metrics are validated before use**, against deterministic synthetic agents whose behavior is known.
 
 ## Alternatives considered
 
@@ -34,7 +35,7 @@ metric shows is a hypothesis.
 | Partial credit as the primary score | Cannot separate a near miss from a lookup table of the shown examples. It rewards the second |
 | A difficulty weighted headline | The weights would be invented. A sensitivity row is provided instead |
 | A single scalar mixing accuracy, adaptation and efficiency | Hides the structure the benchmark exists to expose, and the mixture weights would be arbitrary |
-| Excluding resource-limit attempts as "inconclusive" | A model could avoid a wrong answer by writing an expensive program. Kept distinct instead of excluded |
+| Scoring resource-limit attempts as incorrect | Conflicts with the inconclusive requirement and confuses infrastructure/resource failure with model correctness. Keep distinct, exclude from correctness, and require an official-run cap |
 | Item response theory or Elo style ratings | Needs many models and many tasks per model. With a handful of free local models the estimates would be unstable. Revisit when data exists |
 | Plain binomial intervals over tasks | Tasks in one environment are not independent. The environment is the resampling unit |
 | `pass@k` as the headline | Stochastic sampling is a model property. The default is one deterministic sample, and `k` samples give a pass rate and a stability diagnostic |

@@ -537,3 +537,29 @@ It should be implemented only after SD9 and the runtime status contract are appr
 11. Decide how Requirements 3.1-3.5, 4.1, 4.4, 6.5 and 13-19 are scoped to Wave 2.
 
 No Wave 2 production implementation should begin while these decisions remain open.
+
+## 9. Wave 2.0.2 disposition
+
+The five Wave 2.0.1 failures remain historically recorded above. Their closure contracts are now
+specified in:
+
+- [wave2-decisions.md](wave2-decisions.md), D-001 through D-012;
+- [scoring-contract.md](scoring-contract.md), the authoritative metric and bootstrap definitions;
+- [requirements-traceability.md](requirements-traceability.md), the requirement and amendment matrix.
+
+Additional findings incorporated from the Wave 2.0.2 specialist review are:
+
+- `task_set_id` must include split assignments, family version and complete blueprint content;
+- the worked control-flow and recursive examples must be regenerated because they violate T9 and the
+  all-tests contract;
+- `serializer.py` has the same Python 3.11–3.13 annotation-import defect as `canonical.py`;
+- the reference fallback outside its envelope is not sufficient to claim full independent-oracle
+  compliance;
+- the fixed grammar and surface layer cannot support an unqualified claim of entirely new language
+  families;
+- adapter import restrictions and an unsigned hash chain are trusted-runner controls, not security
+  boundaries.
+
+The architecture is more internally specified, but final approval remains blocked by the proposed
+normative amendments, the Docker/WASM requirement for security-compliant official runs, and the
+unimplemented runtime/provider prerequisites.

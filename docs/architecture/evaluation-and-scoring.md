@@ -2,6 +2,11 @@
 
 Status: **Proposed. Pending review and approval. Nothing here is implemented.**
 Baseline: Wave 1C.16.1, commit `642b2c8`.
+
+**Wave 2.0.2 authority:** [scoring-contract.md](scoring-contract.md) is now the normative source for
+P1-P4, D1-D12, undefined values, pair-component bootstrap, resource-limit eligibility and D8. This
+document explains the rationale and anti-gaming design. If an older formula here differs from the
+scoring contract, the scoring contract wins.
 Names of identifiers, categories, protocols and error classes are defined in the
 [task schema](benchmark-task-schema.md) and are not redefined here.
 
@@ -153,8 +158,8 @@ evidence yet).
 | Metric | Measures | Formula | Range | Better | How it can be gamed | Evidence |
 |---|---|---|---|---|---|---|
 | **P1 Category accuracy** `A_c(m, E)` | Whether the model solves tasks of one capability | `sum_{e in E} sum_{t in T_c,e} p_t / sum n_t` | [0, 1] | higher | Answering from priors on tasks whose answer is easy to guess: controlled by chance floors (T10) and non-trivial answers (T9). Hard-coding public examples: hidden tests are disjoint (T6) | Spec (requirements.md, Requirement 10, criterion 2) |
-| **P2 Unseen-environment accuracy** `U(m)` (the headline) | Mean performance on environments the model's prompts were never tuned on | `(1/\|C\|) sum_{c in C} A_c(m, heldout)` over standalone tasks | [0, 1] | higher | Learning the generator family (section 8.2, risk R4), which no per-run control removes | Design. It replaces the weighted score of Requirement 10, criterion 4 (SD7) |
-| **P3 Conditional loss** `L_v(m)`, with the signed net effect `Delta_v(m)` as its companion | The cost of one manipulation, on matched tasks, among the cases the model could do in the control | `L_v = (pairs with control passed and treatment failed) / (pairs with control passed)`, where a pair is a control/treatment pair that varies `v` and passing is the task's pass rate rounded to the nearest of 0 or 1 for `k = 1`. Companion: `Delta_v = (1/\|Q_v\|) sum_{q in Q_v} (s_ctrl(q) - s_trt(q))` | `L_v` in [0, 1]. `Delta_v` in [-1, 1] | `L_v`: **lower**. It is **undefined, and reported as n/a, never as 0**, when the model passed no control task. `Delta_v` is an effect size and is **not ranked**: a model that fails everything has `Delta_v = 0` | Always answering with the prior answer has a high `L_v`, which is the pattern the metric exposes and not an exploit. A model that fails every control cannot lower `L_v`, because it is undefined, and cannot appear better through `Delta_v`, because that is not ranked. Both must be read with P1 | Hypothesis |
+| **P2 Unseen-environment accuracy** `U(m)` (the headline) | Mean performance on held-out environments | Mean of defined category accuracies on held-out standalone tasks, as defined in scoring-contract.md | [0, 1] or null | higher | Learning the generator family (section 8.2, risk R4) | Design. The required weighted score W is reported separately; replacing it requires SD7 approval |
+| **P3 Conditional loss** `L_v(m)` with diagnostic signed effect `Delta_v(m)` | Cost of one manipulation among eligible control/treatment pair groups | Pair-group means over task pass rates; exact formula and k/void/multiple-treatment rules are in scoring-contract.md | `L_v` [0,1]; `Delta_v` [-1,1]; null when no eligible group | `L_v` lower; `Delta_v` unranked | Prior-semantics agents should lose on treatment pairs; all-void controls remain undefined, not zero | Hypothesis |
 | **P4 Transfer gap** `G_T(m)` | The difference between environments that were used in development and sealed ones | `U_dev(m) - U_heldout(m)` | [-1, 1] | closer to 0 | Tuning prompts on dev environments inflates `U_dev`. The sealed split is the control. Environment difficulty can differ by chance, so the control agent in section 10 is reported next to it | Hypothesis |
 
 The P3 family, one row per variation signature `v` (the `varies` list of the pair):
@@ -189,13 +194,13 @@ Diagnostics explain primary scores. They are never combined into a headline numb
 |---|---|---|---|---|---|---|
 | **D1 Syntax validity** | Whether submissions parse | `(program attempts that reached S5 and did not fail with syntax_error) / (program attempts that reached S5)`. Syntax errors are found when the runtime parses, which is inside S5 | [0, 1] | higher | A trivial program such as `1` always parses. Meaningful only next to P1 | Design |
 | **D2 Execution rate** | Whether valid programs run without a runtime error | `(attempts reaching S6) / (attempts reaching S5 without syntax_error)` | [0, 1] | higher | Same as D1 | Design |
-| **D3 Resource-limit rate** | Programs that exceed a limit | `(resource_limit attempts) / (scored attempts)` | [0, 1] | lower | None. It is a count | Spec (Requirement 20, criterion 8) |
+| **D3 Resource-limit rate** | Programs that exceed a limit | `resource_limit program attempts / program attempts reaching execution` | [0, 1] or null | lower | None. Value tasks are excluded | Design / SD5 |
 | **D4 Hidden-test pass fraction** | Partial correctness of `program` tasks | `sum hidden tests passed / sum hidden tests`, over attempts that reached S5 | [0, 1] | higher | Special-casing the public examples. Disjoint hidden tests expose this | Design |
 | **D5 Test generalization gap** | Overfitting to the shown examples | `public pass fraction - hidden pass fraction`, same population as D4 | [-1, 1] | closer to 0 | A model that passes neither has gap 0, so read it with D4 | Spec (Requirement 10, criterion 3) |
 | **D6 Stale-semantics rate** | Whether wrong answers match what the earlier or familiar semantics would give | `(wrong value answers equal to the control task's expected) / (wrong value answers)` over treatment tasks | [0, 1] | lower | Defined only on `value` tasks. A model that guesses randomly has a low rate and a low P1 | Hypothesis |
 | **D7 Failure distribution** | Where attempts fail | counts by `failure_category` and `detail` | counts | n/a | None | Design |
-| **D8 Step efficiency** | Cost of correct solutions | for `ok` program attempts, the stored integer pair `(steps_submission, steps_reference)`, each the smallest `max_steps` at which the program still passes. The ratio `steps_submission / steps_reference` is computed when a report is rendered and is omitted if `steps_reference` is 0 | the ratio is in (0, infinity) | lower, over `ok` attempts only | Meaningless unless the attempt passed. Each value is found by bisection over `[0, max_steps]`, which takes at most `ceil(log2(max_steps + 1))` runs, 17 for the default limit of 100,000, and needs no runtime change. A reported step count is proposed ([runtime findings](runtime-findings.md), F5) | Design |
-| **D9 Response stability** | Agreement across `k > 1` samples | per task, the share of samples whose canonical program hash equals the most common one, averaged over tasks | (0, 1] | higher | None. It is not a quality measure. A model that is consistently wrong is stable | Design |
+| **D8 Step efficiency** | Cost of correct solutions | Per-test thresholds and median task/report aggregation, with zero-reference and failed-upper-bound rules, as defined in scoring-contract.md | [0, infinity) or null | lower, over eligible passed program tasks | Requires production reference-solution runs and step diagnostics; wall-clock is not a pass predicate | Design / F5 |
+| **D9 Response stability** | Agreement across `k > 1` samples | Modal normalized answer hash for value tasks or canonical-program hash for program tasks, averaged over eligible tasks | `[1/k, 1]` or null | higher | A consistently wrong model can still be stable; read with correctness | Design |
 | **D10 Evaluation determinism** | Whether the harness is deterministic | number of stored attempts whose deterministic re-evaluation differs from the record | integer | must be 0 | An invariant. A nonzero count invalidates the run | Spec (Requirement 20, criterion 1) |
 | **D11 Coverage** | Completeness | `scored attempts / scheduled attempts` | [0, 1] | must be 1 for comparisons | None | Design |
 | **D12 Mean chance floor** | Context for accuracy | mean of `chance_floor_ppm` over scored tasks | [0, 1000000] ppm | context | None | Design |
@@ -227,36 +232,17 @@ published.
 
 ### 6.2 Pairing
 
-A pair is scored per member as `s = p_t / n_t`. For one `v` the effect is the mean over pairs of
-`s_ctrl - s_trt`. If a pair has several treatments, each treatment is compared with the shared
-control and averaged within the pair first, so one control cannot count more than once.
+Pair membership and canonical-query equivalence are defined by D-001 and T7/T8 in the task schema. A
+pair-group score uses task scores `s_t`; multiple treatments are averaged within the group so one
+control contributes once. Undefined task scores exclude the group. P3 is therefore computed by the
+contract in [scoring-contract.md](scoring-contract.md), not by raw sample or environment counts.
 
 ### 6.3 Uncertainty
 
-Tasks inside one environment share a surface profile and a semantic configuration, so they are not
-independent. The unit of resampling is therefore the **environment**.
-
-* **Cluster bootstrap.** Resample environments with replacement, recompute the statistic from all
-  tasks in each resampled environment, repeat `B` times (a parameter of the report; the proposed
-  default is `B = 2000`), and report the 2.5th and 97.5th percentiles.
-* **Pair statistics (P3).** A pair that varies an environment factor spans at least two
-  environments, so single environments are not valid clusters for it. The unit is the **pair
-  component**: environments are vertices, every pair that varies an `environment:*` factor is an
-  edge, and a connected component is resampled as a whole with all its tasks and pairs. A pair that
-  varies only `information_condition` or `example_policy` lies inside one environment, which is its
-  own component. Components are a deterministic function of the task set. A component drawn twice
-  counts twice. P1, P2 and P4 keep single environments as the unit. Two models are compared on the
-  same resampled units.
-* The resampling stream is derived from `SHA-256(task_set_id | "bootstrap" | counter)`, so the
-  interval is reproducible.
-* Differences between two models use the **same** resampled environments for both (a paired
-  bootstrap), because both ran on the same task set.
-* The interval describes variation across the sampled environments. It does not describe variation
-  across model versions, prompt wording or sampling randomness. Prompt wording is addressed by
-  running more than one prompt template version, which is an open question (section 11).
-* With fewer than 2 environments no interval is reported. The number of environments needed to see
-  an effect of a given size is **not stated here**. It is answered by a power analysis on pilot
-  data in milestone M2.11, because inventing a number now would be fabrication.
+The complete deterministic bootstrap algorithm, component construction, duplicate handling, minimum
+units, invalid replicates and percentile rule are in [scoring-contract.md](scoring-contract.md).
+Environment-level metrics use environment units. P3 uses connected pair components. Paired model
+comparisons reuse the exact same unit draws. Undefined bootstrap results are `null`, never zero.
 
 ### 6.4 Comparability
 

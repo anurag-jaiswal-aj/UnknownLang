@@ -12,6 +12,9 @@ Baseline: Wave 1C.16.1, commit `642b2c8`, 1,142 tests passing.
 | [roadmap-wave2.md](roadmap-wave2.md) | implementation milestones |
 | [runtime-findings.md](runtime-findings.md) | defects and gaps found in the existing runtime. **Not fixed. Approval requested.** |
 | [adr/](adr) | five decision records |
+| [wave2-decisions.md](wave2-decisions.md) | Wave 2.0.2 consolidated decisions D-001 to D-012 |
+| [requirements-traceability.md](requirements-traceability.md) | Requirement-by-requirement compliance, deviations, deferrals and proposed amendments |
+| [scoring-contract.md](scoring-contract.md) | Normative metric, undefined-value, bootstrap and D8 contract |
 
 ## 1. Goals and non-goals
 
@@ -334,30 +337,28 @@ execution happen in Docker or WASM. Wave 2 does not provide that (delta SD3). Th
    makes a run incomplete (evaluation document, section 3). M2.6 must show that no submission within
    the size cap can raise one.
 
-The watchdog runs each execution in a worker subprocess that is killed after `wall_clock_ms`. Its
-result is a `resource_limit` with detail `wall_clock`, which marks the run non-reproducible. The
-watchdog is a backstop. The deterministic limits are the ones that score.
-
-If the benchmark is ever exposed to **untrusted users** rather than to models running locally,
-container isolation becomes mandatory. That is a deployment change outside this wave.
+The watchdog is a trusted-local backstop, not a security sandbox. A security-compliant official or
+untrusted run is **blocked** until Docker/WASM isolation satisfies requirements.md Requirements 15 and
+20.10. Trusted development and explicitly labelled trusted-local pilots may use the watchdog only under
+the eligibility rules in [wave2-decisions.md](wave2-decisions.md), D-009.
 
 ## 9. Specification deltas
 
 Wave 2.0 found places where requirements.md or design.md cannot be followed literally, or where the
 brief and the specification disagree. None is applied silently. Each needs an explicit decision.
 
-| ID | Source | Conflict | Proposed resolution |
-|---|---|---|---|
-| SD1 | Requirement 9, criterion 1; design.md Challenge Generator | Lists array operations, string manipulation, sorting, search. The MVP language has only integers, booleans, functions and recursion | Replace with the seven categories of the task schema (6.1). Amend the requirement |
-| SD2 | Requirement 11, criterion 2 | First provider is an OpenAI compatible API | The first adapters are deterministic mocks. A later local adapter may use a compatible wire format. No paid API |
-| SD3 | Requirement 15, criterion 1 | All execution in Docker or WASM | Wave 2 uses a subprocess watchdog. Container isolation is an optional future deployment layer. State the posture honestly in the README, which already does |
-| SD4 | Requirement 12, criterion 5 | SQLite for the MVP | Files are the source of truth. A SQLite index may be derived later ([ADR-004](adr/ADR-004-experiment-storage.md)) |
-| SD5 | Requirement 20, criterion 8 | Over-limit submissions are a distinct inconclusive status, "not a failed/incorrect result" | Keep the status distinct (`resource_limit`) but score it 0, otherwise a model could avoid a wrong answer by writing an expensive program. **Needs your decision.** The alternative is to exclude them and report a separate rate, which weakens the primary score |
-| SD6 | Requirement 5, criterion 6 | Semantic dimensions are `arithmetic` and `short_circuit`. Surface variation is not a dimension | Add **surface profiles** as an explicit, validated variation that does not alter evaluator semantics. Requirement 5, criterion 7 (reject unsupported combinations) applies to profiles as gates E1 and E2 |
-| SD7 | Requirement 10, criterion 4 | A weighted score with difficulty weights | Computed with weight 1 by default and shown only as a sensitivity row (evaluation document, 5.4) |
-| SD8 | Requirement 9, criterion 3 | 3 to 5 public examples and 10 to 20 test cases per challenge | Satisfied by the program tasks (2 to 5 public, 5 to 15 hidden). Answer tasks have one query. Adopt as a per-slot parameter |
-| SD9 | Requirement 7, criterion 6 | Status `invalid_program` | Unused by the runtime (parse errors are `error`). The harness classifies syntax errors itself. A runtime change is proposed in finding F5 |
-| SD10 | Requirement 11, criterion 5 | The response parser accepts a code block or the entire response | Only the **last** fenced block is accepted, and `ANSWER:` lines for values. The entire-response fallback is dropped because it would feed prose to the parser and blur extraction failures with syntax errors |
+| ID | Source | Conflict | Proposed resolution | Disposition |
+|---|---|---|---|---|
+| SD1 | Requirement 9.1; design.md Challenge Generator | The MVP runtime cannot express arrays, strings, sorting or search | Use the seven expressible Wave 2 categories only after a formal amendment; otherwise extend the language. See requirements-traceability.md | **PROPOSED_AMENDMENT** |
+| SD2 | Requirements 3.5 and 11.2 | Ollama is required as a free local provider while OpenAI-compatible APIs are named first | Mocks first, Ollama first real provider, optional OpenAI-compatible transport. See D-010 | **PROPOSED_AMENDMENT** |
+| SD3 | Requirements 15 and 20.10 | Docker/WASM isolation is required; watchdog is not a sandbox | Trusted-local watchdog pilots only; official/untrusted execution is blocked without Docker/WASM | **BLOCKED** |
+| SD4 | Requirement 12.5 | SQLite is required for the MVP | Files/hash chain are Wave 2 source of truth; SQLite is a later derived index | **PROPOSED_AMENDMENT** |
+| SD5 | Requirement 20.8 | Resource limits must be distinct inconclusive, not failed/incorrect | Exclude from correctness denominators, report separately and require an approved official-run cap | **PROPOSED_AMENDMENT** |
+| SD6 | Requirements 4.4 and 5.6 | Surface profiles add controlled variation but do not create new grammars or semantic dimensions | Treat profiles as a benchmark factor and amend the “entirely new languages” claim | **PROPOSED_AMENDMENT** |
+| SD7 | Requirement 10.4 | Difficulty-weighted correctness is mandatory | Report weighted score W as required; retain unweighted held-out accuracy separately | **DESIGN + AMENDMENT if headline wording remains** |
+| SD8 | Requirement 9.3 | Current proposal permitted too few examples/tests | Enforce 3-5 public examples and 10-20 total program tests; define a separate value-task rule | **PROPOSED_AMENDMENT** |
+| SD9 | Requirement 7.6 and design.md status contract | `invalid_program` is required but current runtime returns `error` for parse failures | Adopt D-008 boundary mapping or change runtime; preserve compatibility during migration | **PROPOSED_AMENDMENT / BLOCKED** |
+| SD10 | Requirement 11.5 | Entire-response fallback is required | Use last fenced block or entire response for programs; final `ANSWER:` for values | **PROPOSED_AMENDMENT** |
 
 ## 10. Research design: what makes UnknownLang meaningful
 
@@ -449,6 +450,14 @@ The series now use distinct prefixes: `TS`, `S`, `E`, `ED`, `RP` and `R`.
   consistent. They cannot confirm that a design choice is good. The unresolved questions in section 12
   are where that judgment is still needed.
 
+**Wave 2.0.2 closure validation.** The closure documents add 3 new architecture artifacts and align the
+existing schema, scoring, experiment, roadmap, findings, overview and ADR documents. The current
+throwaway checker passes 125 checks, including task-set identity, pair equivalence, decision-register
+coverage, all metric-contract references, and the five prior review corrections. The 21 planted-defect
+checker still catches all 21 defects with an unmodified control. All 7 Mermaid diagrams parse and the
+repository suite remains 1,142 passed. This validates consistency, not implementation or scientific
+construct validity.
+
 ## 12. Unresolved questions
 
 ### 12.1 Research questions
@@ -473,7 +482,8 @@ These need data or argument, not engineering.
 
 ### 12.2 Engineering decisions
 
-These are settled in this design and recorded so they can be challenged.
+These are the original Wave 2.0 engineering decisions. Wave 2.0.2 decisions D-001 through D-011 in
+[wave2-decisions.md](wave2-decisions.md) supersede them where they differ.
 
 | ID | Decision |
 |---|---|

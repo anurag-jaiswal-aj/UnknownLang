@@ -3,7 +3,8 @@
 Status: **Proposed. Pending review and approval. Nothing here is implemented.**
 Baseline: Wave 1C.16.1, commit `642b2c8`.
 Identifier forms, enumerations and the canonical JSON rule are defined in the
-[task schema](benchmark-task-schema.md). Failure categories and scoring are defined in
+[task schema](benchmark-task-schema.md) and [decisions](wave2-decisions.md). Failure categories and
+scoring are defined in [scoring-contract.md](scoring-contract.md) and explained in
 [evaluation and scoring](evaluation-and-scoring.md). Neither is redefined here.
 
 ## 1. Purpose
@@ -106,7 +107,7 @@ One JSON object per line in `attempts.jsonl`.
 | `evaluation.outcome` | `ok` or `fail` or `void` | yes | |
 | `evaluation.score` | integer 0 or 1, or `null` for `void` | yes | |
 | `evaluation.failure_category`, `evaluation.detail` | | yes | values from [evaluation and scoring](evaluation-and-scoring.md), section 3.1 |
-| `evaluation.diagnostics` | object | yes | integer counts: `public_passed`, `public_total`, `hidden_passed`, `hidden_total`, and `minimal_steps` where measured |
+| `evaluation.diagnostics` | object | yes | integer counts: `public_passed`, `public_total`, `hidden_passed`, `hidden_total`; `per_test_step_thresholds` and `d8_unavailable_reason` where measured |
 | `integrity.record_sha256` | digest | n/a | digest of the hashed fields above |
 | `integrity.prev_sha256` | digest | n/a | the previous line's `record_sha256` (the manifest digest for the first line) |
 | `volatile.started_at`, `volatile.latency_ms`, `volatile.wall_ms` | | no | timing. Never compared |
@@ -243,7 +244,8 @@ class ModelAdapter(Protocol):
 | `ScriptedAdapter` | M2.7 | Returns stored responses by prompt digest. Used for replay and for tests |
 | `StrategyAdapter` | M2.7 | Deterministic agents that read only the prompt text: `constant`, `random(seed)`, `smallint(seed)`, `garbage`, `bomber`, `syntax_only`, `hedger`, `hardcoder` |
 | `OracleAdapter`, `PriorAdapter` | M2.7 | **Privileged.** Built with access to task or environment data in order to produce the known answer. Test only. `privileged: true`, rejected in official runs |
-| `LocalHttpAdapter` | M2.11, not before approval | A local model server over HTTP on the same machine. No key, no cost. Provider details are deferred |
+| `OllamaAdapter` | M2.11, not before approval | Local Ollama server over HTTP. No paid service or key. Provider details are kept outside experiment identity |
+| `OpenAICompatibleAdapter` | later, not before approval | Optional compatible transport; external availability and credentials are never required for the baseline |
 
 requirements.md, Requirement 11, criterion 2 says the first implementation is an OpenAI-compatible
 API. That conflicts with the zero-cost rule and with the instruction not to assume external
@@ -396,10 +398,11 @@ presentation layer. Intervals are pairs of such values.
   "status": { "run": "complete", "coverage": { "num": 280, "den": 280 }, "official": false,
               "void_by_category": {} },
   "headline": {
-    "unseen_accuracy": { "value": { "num": 0, "den": 1 }, "interval_95": null }
+    "unseen_accuracy": null,
+    "weighted_correctness": null
   },
   "categories": {
-    "EVAL": { "passed": 0, "scored": 0, "split": "heldout" }
+    "EVAL": { "passed": 0, "scored": 0, "void": 0, "accuracy": null, "split": "heldout" }
   },
   "environments": [
     { "environment_id": "env_<sha256>", "split": "heldout",
@@ -408,25 +411,28 @@ presentation layer. Intervals are pairs of such values.
   ],
   "paired_effects": [
     { "varies": ["environment:surface_names"], "pairs": 0,
-      "conditional_loss": null, "effect": { "num": 0, "den": 1 }, "interval_95": null }
+      "conditional_loss": null, "effect": null, "undefined_reason": "no_eligible_pair_groups",
+      "interval_95": null }
   ],
-  "transfer_gap": { "value": { "num": 0, "den": 1 }, "control_agent_gap": null, "interval_95": null },
+  "transfer_gap": { "value": null, "control_agent_gap": null, "interval_95": null },
   "diagnostics": {
-    "syntax_validity": { "num": 0, "den": 1 },
-    "execution_rate": { "num": 0, "den": 1 },
-    "resource_limit_rate": { "num": 0, "den": 1 },
-    "hidden_pass_fraction": { "num": 0, "den": 1 },
-    "test_generalization_gap": { "num": 0, "den": 1 },
-    "stale_semantics_rate": { "num": 0, "den": 1 },
+    "syntax_validity": null,
+    "execution_rate": null,
+    "resource_limit_rate": null,
+    "hidden_pass_fraction": null,
+    "test_generalization_gap": null,
+    "stale_semantics_rate": null,
     "response_stability": null,
-    "evaluation_determinism_mismatches": 0
+    "evaluation_determinism_mismatches": 0,
+    "d8": { "task_ratios": [], "median_ratio": null, "per_test_thresholds": [], "zero_reference_tests": 0 }
   },
   "failure_distribution": { "wrong_answer": { "wrong_value": 0 } },
   "resource_usage": {
     "attempts": 0,
     "completion_tokens_reported": null,
     "wall_ms_total": 0,
-    "median_minimal_steps_ratio": null
+    "median_d8_ratio": null,
+    "weighted_correctness": null
   },
   "reproducibility": {
     "conformance_digest": "<sha256>",

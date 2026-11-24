@@ -20,17 +20,23 @@ estimates are given, because none could be justified.
 
 ## 2. Decisions needed before M2.1
 
-| # | Decision | Where it is argued |
-|---|---|---|
-| A1 | Approve the Wave 2 architecture and the five ADRs | [overview](wave2-overview.md), [ADRs](adr) |
-| A2 | Rule on F1, definition-last program value | [runtime findings](runtime-findings.md) |
-| A3 | Rule on F3, Python version support (fix the import, or raise `requires-python`) | F3 |
-| A4 | Approve the additive `RUNTIME_SEMANTICS_VERSION` constant | F4 |
-| A5 | Decide whether to add `error_kind` and `steps_used` to `ExecutionResult` | F5 |
-| A6 | Decide F2 handling (document only, or plan a grammar version in a later wave) | F2 |
-| A7 | Rule on specification deltas SD1 to SD10, especially SD5 (resource limit scoring), SD6 (surface profiles) and SD10 (extraction) | [overview](wave2-overview.md), 9 |
-| A8 | Permission to delete the stray file `tmp/mutate_if_metadata.py` | F12 |
+The following are **gates**, not implementation tasks. M2.1 cannot exit until each has an owner and a
+written approval or amendment:
 
+- D-001 task/pair canonical equivalence;
+- D-002 task-set identity and split hashing;
+- D-003 environment/generator/runtime identity;
+- D-004/D-005 scoring unit and bootstrap contract;
+- D-006/D-007 D8 and undefined-value rules;
+- D-008 runtime status contract;
+- D-009 trusted-local versus security-compliant official eligibility;
+- D-010 provider and storage amendments;
+- D-011 worked-example regeneration;
+- D-012 byte-framed derived randomness;
+- SD1-SD10 and the additional requirements in `requirements-traceability.md`.
+
+No milestone may label an unmet normative requirement as complete. Requirements needing amendment stay
+`PROPOSED_AMENDMENT` until the owner approves the exact before/after text.
 ## 3. Dependency graph
 
 ```mermaid
@@ -60,10 +66,11 @@ M2.5 and M2.6 can proceed in parallel after M2.4. M2.8 and M2.9 can proceed in p
 
 * **Objective.** Put the shared primitives and the rulings in place before anything builds on them.
 * **Scope.** Strict canonical JSON and SHA-256 helpers in `src.benchmark.canonical`. Module import
-  rules test (overview, 3.1). The approved runtime changes only: `RUNTIME_SEMANTICS_VERSION`, and
-  whichever of F1, F3 and F5 were approved. The conformance corpus with its result digest. Golden
-  vectors for the worked examples in the task schema.
-* **Dependencies.** Decisions A1 to A8.
+  rules test (overview, 3.1). Record approved runtime changes only after the D-008/F1/F3/F5 rulings.
+  Define the runtime semantics constant, status migration and conformance corpus only if approved.
+  The conformance corpus with its result digest. Golden vectors for the worked examples in the task
+  schema, regenerated only after the T7/T8/T9 corrections.
+* **Dependencies.** Architecture approval, the requirements traceability decisions, and D-001 through D-010.
 * **Deliverables.** The canonical module and tests. The conformance corpus. The import rule test.
   A RELEASES.md entry. Each approved runtime change as its own commit with its own tests.
 * **Verification.** Hash vectors reproduce the task schema examples exactly. The strict
@@ -99,7 +106,9 @@ M2.5 and M2.6 can proceed in parallel after M2.4. M2.8 and M2.9 can proceed in p
 
 * **Objective.** Derive, validate, freeze and store environments with reproducible identities.
 * **Scope.** Environment record and identity, hash derivation (no `random`), pinned inert seed fields,
-  validation gates E1 to E8, lifecycle, store of immutable records.
+  generator family/algorithm version, observable fingerprint, runtime semantics version, validation
+  gates E1 to E8, lifecycle, store of immutable records, and task-set identity including split
+  assignments and complete blueprint content.
 * **Dependencies.** M2.1, M2.2.
 * **Deliverables.** `src.benchmark.environments` and tests.
 * **Verification.** Identical derivation twice gives identical identifiers. Derivation does not depend
@@ -162,7 +171,9 @@ M2.5 and M2.6 can proceed in parallel after M2.4. M2.8 and M2.9 can proceed in p
   property test with adversarial generators). The watchdog kills a runaway process and reports
   `wall_clock`. The memory limit behavior is **measured on the development platform and
   documented**, not assumed. A static check that the benchmark packages contain no call to `eval`,
-  `exec`, `compile`, `pickle` or a shell.
+  `exec`, `compile`, `pickle` or a shell. If the official security gate is selected, a separate
+  Docker/WASM harness must pass the no-network, temporary-filesystem, CPU and memory checks before
+  official execution is enabled.
 * **Exit criteria.** The strategy agents' attempts (M2.7) will classify as expected.
 * **Risks.** Worker process startup cost. A pool of reused workers may be needed, measured in this
   milestone. Platform differences in resource limits.
@@ -233,8 +244,8 @@ M2.5 and M2.6 can proceed in parallel after M2.4. M2.8 and M2.9 can proceed in p
 
 * **Objective.** First contact with real behavior, at zero cost, to calibrate what cannot be known in
   advance.
-* **Scope.** A local HTTP adapter for a model server on the same machine, with no key. A pilot on
-  the dev split only. Calibration of difficulty mapping, size caps, the number of environments (power
+* **Scope.** A local Ollama adapter on the same machine, with no key. An OpenAI-compatible transport
+  is later and optional. A pilot on the dev split only. Calibration of difficulty mapping, size caps, the number of environments (power
   analysis, R7), prompt template alternatives (R8), and the surface name distribution (R9 checks).
 * **Dependencies.** M2.10, and **approval** to use a local model and to install one.
 * **Deliverables.** The adapter, a pilot report, calibrated parameters, and an updated list of open
