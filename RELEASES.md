@@ -2,6 +2,18 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.7 — Decision register and contract gate closure
+- **Branch:** `main`
+- **Status:** **NEEDS_CHANGES / owner approval pending.** Lifecycle, approval-layer, research-register,
+  replay and D8/void semantics are now explicit. No owner decision is approved and Wave 2.1 remains
+  NO-GO.
+- **Commit:** `f2b94f0`
+- **Validation:** documentation checks passed, Mermaid parsing passed, `git diff --check` passed and
+  the existing Wave 1 suite passed 1,142 tests with exit code 0.
+- **Scope:** Documentation only. `requirements.md` and user-owned `tasks.md` were not modified.
+- **Remaining:** owner must decide AM-01 through AM-16, F1/F3/F5, official security class, research
+  scope, provider/storage policy and all deferred research gates.
+
 ## Wave 2.0.6 — Canonical contract reconciliation and owner decision register
 - **Branch:** `main`
 - **Status:** **NEEDS_CHANGES / owner approval pending.** This milestone reconciles identity, pair,
