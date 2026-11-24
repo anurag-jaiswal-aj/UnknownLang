@@ -7,7 +7,7 @@ Milestones in reverse chronological order. Each entry states what was verified a
 - **Status:** **NEEDS_CHANGES / owner approval pending.** This milestone reconciles identity, pair,
   task-set, fixture, replay, bootstrap and owner-register contracts. It does not approve any normative
   amendment and does not begin Wave 2.1.
-- **Commit:** `190de13`, with final identity/field correction in `57a4ee7`
+- **Commit:** `190de13`, final identity/field correction in `57a4ee7`, and complete owner register in the current Wave 2.0.6 follow-up
 - **Validation:** 121 documentation checks passed, all 7 Mermaid diagrams parsed, `git diff --check`
   passed, and the full Wave 1 regression suite passed 1,142 tests with exit code 0.
 - **Scope:** Documentation only. No source, tests, requirements.md or user-owned tasks.md changes.
