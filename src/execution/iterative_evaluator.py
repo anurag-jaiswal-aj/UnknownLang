@@ -245,6 +245,29 @@ class IterativeEvaluator:
             raise AstDepthExceeded(f"AST depth exceeded: {deepest} > {max_ast_depth}")
         return deepest
 
+    def _validate_int_literals(self, tree: Tree) -> None:
+        """Statically reject integer literals outside the signed 64-bit range.
+
+        Runs once after parsing and before any evaluation, so a bad literal is rejected
+        wherever it appears: top level, nested, in a function body that is never called,
+        or in an ``if`` branch that is never taken. It consumes no execution steps and is
+        independent of the arithmetic mode: modes govern arithmetic results, never
+        literal validity. ``INT64_MIN`` and ``INT64_MAX`` are accepted.
+
+        Raises:
+            ExecutionError: "Integer literal out of range: ..." (result status ``error``).
+        """
+        # iter_subtrees is iterative; Tree.scan_values is recursive and would overflow the
+        # Python stack on deep programs that the explicit-stack evaluator is meant to accept.
+        for node in tree.iter_subtrees():
+            for token in node.children:
+                if isinstance(token, Token) and token.type == "NUMBER":
+                    if not (MIN_INT64 <= int(token.value) <= MAX_INT64):
+                        raise ExecutionError(
+                            f"Integer literal out of range: {token.value} "
+                            f"(must be between {MIN_INT64} and {MAX_INT64})"
+                        )
+
     def _new_context(
         self,
         language_spec: LanguageSpec,
@@ -298,6 +321,7 @@ class IterativeEvaluator:
         frame_stack: list[Frame] = []
         try:
             self._validate_ast_depth(tree, context.max_ast_depth)
+            self._validate_int_literals(tree)
 
             frame_stack.append(Frame(frame_type=FrameType.EXPR, expr=tree, ast_depth=1))
             while frame_stack:

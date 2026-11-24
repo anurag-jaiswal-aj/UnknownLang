@@ -163,6 +163,17 @@ class ReferenceEvaluator:
             parser = self._get_parser(grammar)
             tree = parser.parse(program_text)
 
+            # Reject out-of-range integer literals before evaluating anything.
+            # Written independently of the production evaluator (shares only the bounds).
+            for node in tree.iter_subtrees():
+                for child in node.children:
+                    if isinstance(child, Token) and child.type == "NUMBER":
+                        if not (MIN_INT64 <= int(child.value) <= MAX_INT64):
+                            raise ExecutionError(
+                                f"Integer literal out of range: {child.value} "
+                                f"(must be between {MIN_INT64} and {MAX_INT64})"
+                            )
+
             # Build initial execution context
             context = ReferenceContext(
                 arithmetic_mode=language_spec.semantics.arithmetic_mode,
