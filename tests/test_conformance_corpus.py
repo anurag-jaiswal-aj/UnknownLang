@@ -4,10 +4,17 @@ import pathlib
 
 import pytest
 
-from src.benchmark.manager import DerivationManifest, EnvironmentManager, reconstruct_environment_from_manifest
+from src.benchmark.canonical import MAX_NESTING_DEPTH, MAX_COLLECTION_SIZE, MAX_STRING_LENGTH
+from src.benchmark.manager import (
+    DerivationManifest,
+    EnvironmentManager,
+    MAX_MANIFEST_SIZE,
+    reconstruct_environment_from_manifest,
+)
+from src.language.surface import SurfaceTranslationError
 from src.execution.engine import ExecutionEngine
 from src.language.seed import LanguageSeed, ValidationError
-from src.language.surface import SurfaceProfile, to_canonical
+from src.language.surface import SurfaceProfile, to_canonical, MAX_SOURCE_LENGTH, MAX_MAPPINGS_PER_CATEGORY
 from src.oracle.reference_evaluator import ReferenceEvaluator
 
 FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures" / "conformance"
@@ -239,3 +246,83 @@ def _lang():
         short_circuit=True,
     )
     return LanguageGenerator().generate(seed)
+
+
+class TestResourceBoundaries:
+    """Test resource boundary enforcement."""
+
+    def test_source_length_limit(self):
+        """Verify source text longer than MAX_SOURCE_LENGTH is rejected."""
+        long_source = " " * (MAX_SOURCE_LENGTH + 1)
+        profile = SurfaceProfile(
+            keywords={}, operators={}, literals={}, profile_schema_version=1
+        )
+        with pytest.raises(SurfaceTranslationError) as exc_info:
+            to_canonical(long_source, profile)
+        assert "exceeds maximum length" in str(exc_info.value)
+
+    def test_profile_mappings_limit(self):
+        """Verify surface profile with too many mappings is rejected."""
+        too_many_keywords = {f"k{i}": "def" for i in range(MAX_MAPPINGS_PER_CATEGORY + 1)}
+        profile_dict = {
+            "profile_schema_version": 1,
+            "keywords": too_many_keywords,
+            "operators": {},
+            "literals": {},
+        }
+        with pytest.raises(SurfaceTranslationError) as exc_info:
+            SurfaceProfile.from_dict(profile_dict)
+        assert "exceeds maximum" in str(exc_info.value)
+
+    def test_canonical_depth_limit(self):
+        """Verify deeply nested structures exceed MAX_NESTING_DEPTH."""
+        def make_deep(n):
+            if n == 0:
+                return "base"
+            return {"level": make_deep(n - 1)}
+
+        # Depth 11 should fail (MAX_NESTING_DEPTH=10)
+        deep = make_deep(11)
+        from src.benchmark.canonical import canonical_json
+        with pytest.raises(TypeError) as exc_info:
+            canonical_json(deep)
+        assert "Exceeds maximum nesting depth" in str(exc_info.value)
+
+    def test_canonical_collection_size_limit(self):
+        """Verify large collections exceed MAX_COLLECTION_SIZE."""
+        from src.benchmark.canonical import canonical_json
+        too_large = {str(i): i for i in range(MAX_COLLECTION_SIZE + 1)}
+        with pytest.raises(TypeError) as exc_info:
+            canonical_json(too_large)
+        assert "exceeds maximum size" in str(exc_info.value)
+
+    def test_canonical_string_length_limit(self):
+        """Verify long strings exceed MAX_STRING_LENGTH."""
+        from src.benchmark.canonical import canonical_json, sha256_text
+        long_text = "x" * (MAX_STRING_LENGTH + 1)
+        with pytest.raises(TypeError) as exc_info:
+            canonical_json({"text": long_text})
+        assert "exceeds maximum length" in str(exc_info.value)
+        with pytest.raises(TypeError) as exc_info:
+            sha256_text(long_text)
+        assert "exceeds maximum length" in str(exc_info.value)
+
+    def test_manifest_size_limit(self):
+        """Verify manifest exceeding MAX_MANIFEST_SIZE is rejected."""
+        # Create a valid seed and profile first
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+
+        # Manifest should be well under limit, so reconstruction should succeed
+        reconstructed = reconstruct_environment_from_manifest(manifest)
+        assert reconstructed.environment_id == env.environment_id

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Mapping, Literal
+from typing import Any, Mapping, Literal
 
 from .semantics import BUILTIN_OPERATIONS
 
@@ -18,6 +18,17 @@ _DIGITS = re.compile(r"-?[0-9]+")
 
 class SurfaceTranslationError(ValueError):
     """Raised when surface source cannot be tokenized or a profile is invalid."""
+
+
+# Maximum surface profile mappings per category
+MAX_MAPPINGS_PER_CATEGORY = 100
+# Maximum length of mapping keys and targets
+MAX_MAPPING_KEY_LENGTH = 64
+MAX_MAPPING_TARGET_LENGTH = 64
+
+# Maximum source text length in UTF-8 bytes
+# 64KB is more than sufficient for any benchmark program
+MAX_SOURCE_LENGTH = 65_536
 
 
 @dataclass(frozen=True)
@@ -30,6 +41,7 @@ class SurfaceProfile:
     profile_schema_version: int = 1
 
     def validate(self) -> None:
+        """Validate surface profile structure."""
         if type(self.profile_schema_version) is not int or self.profile_schema_version != 1:
             raise SurfaceTranslationError("Unsupported surface profile schema version")
         names: list[str] = []
@@ -38,6 +50,10 @@ class SurfaceProfile:
             ("operators", self.operators),
             ("literals", self.literals),
         ):
+            if len(mapping) > MAX_MAPPINGS_PER_CATEGORY:
+                raise SurfaceTranslationError(
+                    f"{category} exceeds maximum of {MAX_MAPPINGS_PER_CATEGORY} mappings"
+                )
             for name, target in mapping.items():
                 if not isinstance(name, str) or _IDENTIFIER.fullmatch(name) is None:
                     raise SurfaceTranslationError(f"Invalid {category} surface name: {name!r}")
@@ -53,6 +69,32 @@ class SurfaceProfile:
 
     @classmethod
     def from_dict(cls, value: Mapping[str, object]) -> "SurfaceProfile":
+        # Validate before constructing to catch issues early
+        if type(value.get("profile_schema_version")) is not int:
+            raise SurfaceTranslationError("profile_schema_version must be an integer")
+        if value["profile_schema_version"] != 1:
+            raise SurfaceTranslationError("Unsupported profile schema version")
+        for category in ("keywords", "operators", "literals"):
+            mapping = value.get(category, {})
+            if not isinstance(mapping, dict):
+                raise SurfaceTranslationError(f"{category} must be a dictionary")
+            if len(mapping) > MAX_MAPPINGS_PER_CATEGORY:
+                raise SurfaceTranslationError(
+                    f"{category} exceeds maximum of {MAX_MAPPINGS_PER_CATEGORY} mappings"
+                )
+            for name, target in mapping.items():
+                if not isinstance(name, str):
+                    raise SurfaceTranslationError(f"{category} key must be a string: {name!r}")
+                if len(name) > MAX_MAPPING_KEY_LENGTH:
+                    raise SurfaceTranslationError(
+                        f"{category} key exceeds maximum length of {MAX_MAPPING_KEY_LENGTH}: {name!r}"
+                    )
+                if not isinstance(target, str):
+                    raise SurfaceTranslationError(f"{category} target must be a string: {target!r}")
+                if len(target) > MAX_MAPPING_TARGET_LENGTH:
+                    raise SurfaceTranslationError(
+                        f"{category} target exceeds maximum length of {MAX_MAPPING_TARGET_LENGTH}: {target!r}"
+                    )
         profile = cls(
             keywords=dict(value.get("keywords", {})),  # type: ignore[arg-type]
             operators=dict(value.get("operators", {})),  # type: ignore[arg-type]
@@ -71,7 +113,24 @@ class TranslationResult:
     name_map: dict[str, str]
 
 
+# Maximum source text length in UTF-8 bytes
+# 64KB is more than sufficient for any benchmark program
+MAX_SOURCE_LENGTH = 65_536
+
+
 def _tokenize(source: str) -> list[str]:
+    """Tokenize surface source text into canonical tokens.
+
+    Validates source length before processing to prevent DoS attacks.
+
+    Raises:
+        SurfaceTranslationError: If source exceeds maximum length
+    """
+    if len(source) > MAX_SOURCE_LENGTH:
+        raise SurfaceTranslationError(
+            f"Source text exceeds maximum length of {MAX_SOURCE_LENGTH} characters"
+        )
+
     tokens: list[str] = []
     position = 0
     while position < len(source):
@@ -98,7 +157,13 @@ def _tokenize(source: str) -> list[str]:
 
 
 def to_canonical(source: str, profile: SurfaceProfile | Mapping[str, object]) -> TranslationResult:
-    """Translate exact surface tokens to the frozen canonical Lisp grammar."""
+    """Translate exact surface tokens to the frozen canonical Lisp grammar.
+
+    Validates source length before tokenization and profile structure before construction.
+
+    Raises:
+        SurfaceTranslationError: If source exceeds maximum length or profile is invalid
+    """
     if not isinstance(source, str):
         raise SurfaceTranslationError("Surface source must be a string")
     if not isinstance(profile, SurfaceProfile):

@@ -86,6 +86,21 @@ def create_derivation_manifest(
     )
 
 
+# Maximum serialized manifest size in bytes
+# 500KB is more than sufficient for any valid derivation manifest
+MAX_MANIFEST_SIZE = 500_000
+
+
+def _validate_manifest_size(manifest: DerivationManifest) -> None:
+    """Validate manifest size before expensive reconstruction."""
+    serialized = manifest.to_canonical_bytes()
+    if len(serialized) > MAX_MANIFEST_SIZE:
+        raise ValidationError(
+            f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+            f"({len(serialized)} bytes)"
+        )
+
+
 def reconstruct_environment_from_manifest(
     manifest: DerivationManifest,
 ) -> EnvironmentRecord:
@@ -97,6 +112,9 @@ def reconstruct_environment_from_manifest(
     Raises:
         ValidationError: If manifest is invalid or identity doesn't match
     """
+    # Validate manifest size before expensive reconstruction
+    _validate_manifest_size(manifest)
+
     if manifest.schema_version != DERIVATION_SCHEMA_VERSION:
         raise ValidationError(
             f"Unsupported derivation schema version: {manifest.schema_version}. "
