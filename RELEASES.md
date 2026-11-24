@@ -2,6 +2,20 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.6 — Canonical contract reconciliation and owner decision register
+- **Branch:** `main`
+- **Status:** **NEEDS_CHANGES / owner approval pending.** This milestone reconciles identity, pair,
+  task-set, fixture, replay, bootstrap and owner-register contracts. It does not approve any normative
+  amendment and does not begin Wave 2.1.
+- **Commit:** `190de13`
+- **Validation:** 121 documentation checks passed, all 7 Mermaid diagrams parsed, `git diff --check`
+  passed, and the full Wave 1 regression suite passed 1,142 tests with exit code 0.
+- **Scope:** Documentation only. No source, tests, requirements.md or user-owned tasks.md changes.
+- **Remaining:** Owner approval is still required for AM-01 through AM-09, the complete omitted
+  requirement register, trusted-local versus Docker/WASM execution, provider/storage scope, and the
+  narrow-family research claim. Official/untrusted execution remains blocked.
+- **Decision:** Do not begin Wave 2.1 until `wave2-owner-approval.md` is completed by the owner.
+
 ## Wave 2.0.4 — Requirements and contract approval preparation
 - **Branch:** `main`
 - **Status:** **NEEDS_CHANGES.** This is an owner-approval package, not an implementation approval.
