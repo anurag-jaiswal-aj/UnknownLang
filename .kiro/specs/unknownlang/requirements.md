@@ -107,6 +107,7 @@ UnknownLang is an adaptive AI reasoning benchmark platform that evaluates whethe
 5. THE Interpreter SHALL enforce deterministic resource limits: max_steps (100000), max_ast_depth (1000), max_call_depth (100), max_collection_size (10000), max_string_size (1MB), max_output_size (1MB).
 6. THE Interpreter SHALL return typed execution statuses: success, error, step_limit_exceeded, recursion_limit_exceeded, output_limit_exceeded, ast_depth_exceeded, invalid_program.
 7. THE Interpreter SHALL NOT be considered fully sandboxed; process-level isolation is required for security.
+8. THE Interpreter SHALL use lexical scoping for all MVP languages: a function body SHALL resolve identifiers only from its own parameters and, for calls, from declared function names. A variable bound in a calling function SHALL NOT be visible to the functions it calls, and an identifier that is not a parameter of the enclosing function SHALL produce an "Unknown identifier" error. Scoping is not a configurable dimension in the MVP (see Requirement 5, criterion 6).
 
 ### Requirement 8: Independent Test Oracle Strategy
 
