@@ -2,6 +2,44 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 1C.16.1 — Conditional metadata consistency
+
+- **Branch:** `main`
+- **Status:** Corrects a metadata bug identified at Wave 1C.16. `if` now always uses
+  `short-circuit` mode in `OperationInfo`. Full suite: 1142 passed, exit code 0.
+  Before this milestone it was 1130 passed.
+
+### Commits
+| Commit | Change |
+|---|---|
+| `ae706ba` | `if` always uses `short-circuit` mode; `tests/test_if_metadata.py` |
+
+### Metadata correction
+
+`build_spec` in `SemanticRegistry` incorrectly grouped `if` with `and` and `or`, assigning
+it a mode based on the seed's `short_circuit` setting. This is incorrect:
+
+- `and` and `or` evaluate both operands in eager mode (`short_circuit=False`) before checking
+  either. Their `semantic_mode` is `eager` or `short-circuit` depending on the seed.
+- `if` always evaluates only the selected branch, regardless of the boolean evaluation mode.
+  Its `semantic_mode` is always `short-circuit` (meaning lazy branch selection).
+
+The fix removes `"if"` from the `{"and", "or", "if"}` set in `build_spec`, so it always
+gets `"short-circuit"`. The runtime behavior was already correct in both evaluators.
+
+### Verification
+
+- Full suite on export of commit `ae706ba`: 1142 passed, exit 0.
+- New tests `test_if_metadata.py`: 12 passed, exit 0.
+- Mutation QA: 5 mutants. 2 applied and caught, 3 did not apply (exact text mismatch).
+  Source files restored byte-for-byte.
+
+### Compatibility
+
+- No change to runtime behavior.
+- No change to generated language identity/hash.
+- No change to evaluator code.
+
 ## Wave 1C.16 — Strict runtime type semantics
 - **Branch:** `main`
 - **Status:** Closes the boolean-as-integer limitation recorded at Wave 1C.15. Both evaluators
