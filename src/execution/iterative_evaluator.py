@@ -104,6 +104,22 @@ class Frame:
     sc_depth: int = 0
 
 
+def _validate_limit(name: str, value: int | None) -> int | None:
+    """Validate one resource-limit argument. ``None`` means "use the default".
+
+    Accepts exact ``int`` values >= 0 (zero is meaningful: it rejects the first
+    expression, any non-empty program, or the first user call respectively).
+    ``bool`` is rejected explicitly because ``True``/``False`` are ints in Python.
+    """
+    if value is None:
+        return None
+    if type(value) is not int:
+        raise TypeError(f"{name} must be an int or None, got {type(value).__name__}")
+    if value < 0:
+        raise ValueError(f"{name} must be >= 0, got {value}")
+    return value
+
+
 class IterativeEvaluator:
     """
     Iterative evaluator for UnknownLang programs.
@@ -145,8 +161,32 @@ class IterativeEvaluator:
     - All function bodies must be validated (even uncalled)
     """
     
-    def __init__(self) -> None:
-        """Initialize the iterative evaluator."""
+    def __init__(
+        self,
+        *,
+        max_steps: int | None = None,
+        max_ast_depth: int | None = None,
+        max_call_depth: int | None = None,
+    ) -> None:
+        """Initialize the iterative evaluator.
+
+        Args:
+            max_steps: Execution-step budget (default ``DEFAULT_MAX_STEPS``).
+            max_ast_depth: Static AST-depth limit (default ``DEFAULT_MAX_AST_DEPTH``).
+            max_call_depth: Active user-function invocation limit
+                (default ``DEFAULT_MAX_CALL_DEPTH``).
+
+        Each is an ``int >= 0`` or ``None`` for the default. Invalid values raise
+        ``TypeError`` / ``ValueError`` immediately, naming the parameter. The limits are
+        resolved once here and applied to every ``execute`` call; each call gets a fresh
+        context, so no execution state is shared between calls.
+        """
+        steps = _validate_limit("max_steps", max_steps)
+        ast_depth = _validate_limit("max_ast_depth", max_ast_depth)
+        call_depth = _validate_limit("max_call_depth", max_call_depth)
+        self._max_steps = DEFAULT_MAX_STEPS if steps is None else steps
+        self._max_ast_depth = DEFAULT_MAX_AST_DEPTH if ast_depth is None else ast_depth
+        self._max_call_depth = DEFAULT_MAX_CALL_DEPTH if call_depth is None else call_depth
         self._parser_cache: dict[str, Lark] = {}
     
     def _get_parser(self, grammar: str) -> Lark:
@@ -213,15 +253,16 @@ class IterativeEvaluator:
         max_ast_depth: int | None = None,
         max_call_depth: int | None = None,
     ) -> EvalContext:
-        """Build the execution context. The ONLY place resource limits are resolved.
+        """Build the execution context. The ONLY place limits reach a running context.
 
-        Explicit limits win; otherwise the module defaults apply. The resulting
-        context is the single source of truth for static validation and runtime.
+        Precedence for each limit: explicit per-call argument (private, used by tests)
+        > value given to the constructor > module default. The resulting context is the
+        single source of truth for static validation and runtime.
         """
         return EvalContext(
-            max_steps=DEFAULT_MAX_STEPS if max_steps is None else max_steps,
-            max_ast_depth=DEFAULT_MAX_AST_DEPTH if max_ast_depth is None else max_ast_depth,
-            max_call_depth=DEFAULT_MAX_CALL_DEPTH if max_call_depth is None else max_call_depth,
+            max_steps=self._max_steps if max_steps is None else max_steps,
+            max_ast_depth=self._max_ast_depth if max_ast_depth is None else max_ast_depth,
+            max_call_depth=self._max_call_depth if max_call_depth is None else max_call_depth,
             functions=dict(language_spec.builtins),
             arithmetic_mode=language_spec.semantics.arithmetic_mode,
             short_circuit_mode=language_spec.semantics.short_circuit_mode,
