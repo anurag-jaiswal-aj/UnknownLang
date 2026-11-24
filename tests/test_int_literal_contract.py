@@ -92,9 +92,14 @@ class TestPositions:
         assert "Integer literal out of range" in r.error_message
 
     def test_nothing_evaluated_before_rejection(self, evaluator):
-        """A valid earlier expression must not run: rejection happens before evaluation."""
-        r = evaluator.execute(f"(print 1)\n{ABOVE_MAX_S}", _lang("wraparound"))
+        """Rejection happens before evaluation: an earlier failing expression must not run first.
+
+        (div 1 0) fails with a division error if it is evaluated, so the literal message proves
+        the literal check ran before any expression was evaluated.
+        """
+        r = evaluator.execute(f"(div 1 0)\n{ABOVE_MAX_S}", _lang("wraparound"))
         assert r.status == "error"
+        assert r.error_message.startswith("Integer literal out of range")
         assert r.output == ""
 
     def test_boundary_literals_accepted_in_function_bodies(self, evaluator):
