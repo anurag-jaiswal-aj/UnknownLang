@@ -330,3 +330,62 @@ class TestImportStructure:
             "assert 'src.execution.engine' not in sys.modules\n"
             "assert 'src.execution.iterative_evaluator' not in sys.modules\n")
         assert proc.returncode == 0, proc.stderr
+
+
+# ============================================================================
+# STRUCTURAL PROOF OF "NO PYTHON RECURSION" IN THE PRODUCTION PATH
+# ============================================================================
+
+def method_call_graph(module, class_name):
+    """{method: {methods of the same class it references via self}} from the source."""
+    import ast
+    tree = ast.parse(Path(module.__file__).read_text())
+    klass = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == class_name)
+    methods = {f.name: f for f in klass.body if isinstance(f, ast.FunctionDef)}
+    graph = {}
+    for name, func in methods.items():
+        graph[name] = {n.attr for n in ast.walk(func)
+                       if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)
+                       and n.value.id == "self" and n.attr in methods}
+    return graph
+
+
+def find_cycle(graph):
+    """Return one cycle ``[a, b]`` (a reaches b which reaches back) or None."""
+    state = {}
+
+    def visit(node):
+        state[node] = 1
+        for nxt in sorted(graph[node]):
+            if state.get(nxt) == 1:
+                return [node, nxt]
+            if nxt not in state:
+                found = visit(nxt)
+                if found:
+                    return found
+        state[node] = 2
+        return None
+
+    for node in sorted(graph):
+        if node not in state:
+            found = visit(node)
+            if found:
+                return found
+    return None
+
+
+class TestNoPythonRecursionStructure:
+    def test_the_iterative_evaluator_has_no_method_cycle(self):
+        graph = method_call_graph(iterative_mod, "IterativeEvaluator")
+        assert len(graph) > 20                      # the graph is real, not empty
+        assert find_cycle(graph) is None
+
+    def test_the_cycle_detector_can_actually_find_recursion(self):
+        """Sanity check of the checker: the recursive reference evaluator must show a cycle."""
+        import src.oracle.reference_evaluator as reference_mod
+        assert find_cycle(method_call_graph(reference_mod, "ReferenceEvaluator")) is not None
+
+    def test_the_detector_finds_a_synthetic_cycle_and_ignores_a_dag(self):
+        assert find_cycle({"a": {"b"}, "b": {"c"}, "c": {"a"}}) is not None
+        assert find_cycle({"a": {"a"}}) is not None
+        assert find_cycle({"a": {"b", "c"}, "b": {"c"}, "c": set()}) is None
