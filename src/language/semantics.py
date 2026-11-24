@@ -18,6 +18,14 @@ VALID_ARITHMETIC_MODES: Final[frozenset[str]] = frozenset(
 )
 VALID_SHORT_CIRCUIT_MODES: Final[frozenset[bool]] = frozenset({True, False})
 
+# Fixed MVP semantic metadata (requirements.md Req. 6 criterion 3 requires these fields in
+# the specification's semantics object; Req. 5 criterion 6 and design.md "Deferred Semantic
+# Dimensions" defer them as *configurable* dimensions). They are therefore recorded, not
+# configurable: each has exactly one supported value, matching the evaluators' behavior.
+FIXED_EVALUATION_ORDER: Final[str] = "left-to-right"
+FIXED_SCOPING: Final[str] = "lexical"
+FIXED_TYPE_COERCION: Final[str] = "strict"
+
 # Supported built-in operations (frozen set of operation names)
 BUILTIN_OPERATIONS: Final[frozenset[str]] = frozenset(
     {"add", "sub", "mul", "div", "mod", "and", "or", "not", "eq", "if"}
@@ -51,9 +59,24 @@ class SemanticSpec:
     arithmetic_mode: str
     short_circuit_mode: bool
     operations: dict[str, OperationInfo]
+    # Fixed MVP metadata. Not configurable: any value other than the fixed one is rejected.
+    evaluation_order: str = FIXED_EVALUATION_ORDER
+    scoping: str = FIXED_SCOPING
+    type_coercion: str = FIXED_TYPE_COERCION
 
     def __post_init__(self) -> None:
         """Validate semantic spec fields after initialization."""
+        for field_name, fixed in (
+            ("evaluation_order", FIXED_EVALUATION_ORDER),
+            ("scoping", FIXED_SCOPING),
+            ("type_coercion", FIXED_TYPE_COERCION),
+        ):
+            value = getattr(self, field_name)
+            if value != fixed:
+                raise ValidationError(
+                    f"Invalid {field_name} '{value}'. "
+                    f"The only supported value in the MVP is '{fixed}'"
+                )
         if self.arithmetic_mode not in VALID_ARITHMETIC_MODES:
             raise ValidationError(
                 f"Invalid arithmetic_mode '{self.arithmetic_mode}'. "
@@ -273,4 +296,7 @@ class SemanticRegistry:
             arithmetic_mode=seed.arithmetic,
             short_circuit_mode=seed.short_circuit,
             operations=operations,
+            evaluation_order=FIXED_EVALUATION_ORDER,
+            scoping=FIXED_SCOPING,
+            type_coercion=FIXED_TYPE_COERCION,
         )
