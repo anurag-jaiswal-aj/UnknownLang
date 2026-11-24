@@ -2,6 +2,20 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.0.4 — Requirements and contract approval preparation
+- **Branch:** `main`
+- **Status:** **NEEDS_CHANGES.** This is an owner-approval package, not an implementation approval.
+- **Commit:** `ffac612` (`docs/architecture/wave2-owner-approval.md` and contract corrections)
+- **Scope:** No production implementation. No normative requirements were modified. The historical
+  `design.md` completion/GO claims were corrected to distinguish Wave 1 implementation from planned
+  or unimplemented capabilities.
+- **Validation:** 129 documentation checks passed, all 7 Mermaid diagrams parsed, `git diff --check`
+  passed, and the full repository suite passed 1,142 tests with exit code 0.
+- **Open approval decisions:** AM-01 through AM-09, F1/F3/F5 runtime decisions, pair identity and
+  D8 technical contracts, trusted-local versus Docker/WASM official execution, Ollama/provider order,
+  and the narrow-family versus genuine-grammar research scope.
+- **Decision:** Do not begin Wave 2.1. The owner must complete `docs/architecture/wave2-owner-approval.md`.
+
 ## Wave 2.0.2 — Architecture closure and requirements reconciliation
 - **Branch:** `main`
 - **Status:** **NEEDS_CHANGES.** Design-only closure documents are complete, but Wave 2 remains
