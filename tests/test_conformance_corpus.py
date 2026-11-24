@@ -329,6 +329,125 @@ class TestResourceBoundaries:
         reconstructed = reconstruct_environment_from_manifest(manifest)
         assert reconstructed.environment_id == env.environment_id
 
+    def test_manifest_at_exact_500kb_boundary(self):
+        """Verify manifest at exactly 500,000 bytes boundary is accepted."""
+        # Construct a manifest with size as close to 500,000 bytes as possible
+        # Using 8 strings of 62400 chars each = 499,996 bytes (4 bytes under limit)
+
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+
+        mgr = EnvironmentManager()
+        env, _ = mgr.create_environment(seed, profile)
+
+        # 8 strings of 62400 chars = 499,996 bytes (just under 500KB)
+        large_seed = {
+            "name": "test",
+            "syntax_style": "lisp",
+            "features": ["arithmetic", "functions"],
+            "difficulty": 1,
+            "arithmetic": "wraparound",
+            "short_circuit": True,
+            "f1": "x" * 62400,
+            "f2": "y" * 62400,
+            "f3": "z" * 62400,
+            "f4": "a" * 62400,
+            "f5": "b" * 62400,
+            "f6": "c" * 62400,
+            "f7": "d" * 62400,
+            "f8": "e" * 62400,
+        }
+
+        large_manifest = DerivationManifest(
+            schema_version=1,
+            environment_id=env.environment_id,
+            env_schema_version=1,
+            generator_family_version="f1",
+            generator_algorithm_version="1.0.0",
+            seed=large_seed,
+            surface_profile=profile,
+            runtime_semantics_version=2,
+            grammar_sha256=env.identity_core["grammar_sha256"],
+            semantic_spec_sha256=env.identity_core["semantic_spec_sha256"],
+            surface_profile_sha256=env.identity_core["surface_profile_sha256"],
+        )
+
+        # Verify actual size is just under limit
+        from src.benchmark.canonical import canonical_bytes
+        actual_size = len(canonical_bytes(large_manifest.to_dict()))
+        assert actual_size <= MAX_MANIFEST_SIZE  # 499,996 bytes
+        assert actual_size >= MAX_MANIFEST_SIZE - 100  # Close to boundary
+
+        # Should be accepted (just under 500KB)
+        reconstructed = reconstruct_environment_from_manifest(large_manifest)
+        assert reconstructed.environment_id == env.environment_id
+
+    def test_manifest_exceeding_500kb_boundary(self):
+        """Verify manifest exceeding 500,000 bytes is rejected."""
+        # Use the same setup but with one more character in each string
+        # 8 strings of 62401 chars = 500,004 bytes (4 bytes over limit)
+
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+
+        mgr = EnvironmentManager()
+        env, _ = mgr.create_environment(seed, profile)
+
+        # 8 strings of 62401 chars = 500,004 bytes (over 500KB)
+        oversized_seed = {
+            "name": "test",
+            "syntax_style": "lisp",
+            "features": ["arithmetic", "functions"],
+            "difficulty": 1,
+            "arithmetic": "wraparound",
+            "short_circuit": True,
+            "f1": "x" * 62401,
+            "f2": "y" * 62401,
+            "f3": "z" * 62401,
+            "f4": "a" * 62401,
+            "f5": "b" * 62401,
+            "f6": "c" * 62401,
+            "f7": "d" * 62401,
+            "f8": "e" * 62401,
+        }
+
+        oversized_manifest = DerivationManifest(
+            schema_version=1,
+            environment_id=env.environment_id,
+            env_schema_version=1,
+            generator_family_version="f1",
+            generator_algorithm_version="1.0.0",
+            seed=oversized_seed,
+            surface_profile=profile,
+            runtime_semantics_version=2,
+            grammar_sha256=env.identity_core["grammar_sha256"],
+            semantic_spec_sha256=env.identity_core["semantic_spec_sha256"],
+            surface_profile_sha256=env.identity_core["surface_profile_sha256"],
+        )
+
+        # Verify actual size exceeds limit
+        from src.benchmark.canonical import canonical_bytes
+        actual_size = len(canonical_bytes(oversized_manifest.to_dict()))
+        assert actual_size > MAX_MANIFEST_SIZE  # 500,004 bytes
+
+        # Should be rejected by preflight
+        with pytest.raises(ValidationError, match="exceeds maximum size"):
+            reconstruct_environment_from_manifest(oversized_manifest)
+
     def test_manifest_at_exact_boundary(self):
         """Verify manifest at exactly the accepted boundary is accepted."""
         # Create a manifest with large but valid seed that's close to 500KB
