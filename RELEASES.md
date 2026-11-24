@@ -2,6 +2,21 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.1 — Environment Foundation Acceptance and Integrity Closure
+- **Branch:** `main`
+- **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** `833d588` hash verification fix, `410cd2e` Wave 2.2.0 release.
+- **Manifest integrity:** Explicit hash verification in `_verify_manifest_with_hash_checks()` detects tampering in grammar, semantic spec, and surface profile hashes.
+- **Reconstruction:** Deterministic regeneration using stored seed and surface profile, with full identity verification.
+- **Identity-affecting inputs:** All seed and surface profile fields stored; version fields validated.
+- **Test results:** 1184 tests passed (including 17 conformance tests). `git diff --check` passed. Python 3.14.6 verified.
+- **Remaining limitations:**
+  - Python 3.11–3.13: unavailable (Lark not installed in those interpreter environments)
+  - `invalid_program` boundary migration: deferred
+  - Docker/WASM sandboxing: required for official/untrusted execution
+  - Persistent environment resolution: placeholder implementation
+  - Input size limits: documented in release notes, not yet enforced
+
 ## Wave 2.2.0 — Environment Lifecycle and Deterministic Derivation Foundation
 - **Branch:** `main`
 - **Status:** Foundation implementation. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
