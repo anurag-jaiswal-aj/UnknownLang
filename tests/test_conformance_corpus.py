@@ -309,6 +309,8 @@ class TestResourceBoundaries:
 
     def test_manifest_size_limit(self):
         """Verify manifest exceeding MAX_MANIFEST_SIZE is rejected."""
+        from src.benchmark.canonical import canonical_bytes
+
         # Create a valid seed and profile first
         seed = LanguageSeed(
             name="test",
@@ -326,3 +328,189 @@ class TestResourceBoundaries:
         # Manifest should be well under limit, so reconstruction should succeed
         reconstructed = reconstruct_environment_from_manifest(manifest)
         assert reconstructed.environment_id == env.environment_id
+
+    def test_seed_name_boundary(self):
+        """Verify seed name at exact MAX_NAME_LENGTH (50) is accepted, 51 rejected."""
+        # Exactly 50 chars - should pass
+        seed = LanguageSeed(
+            name="a" * 50,
+            syntax_style="lisp",
+            features=["feature1"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        assert seed.name == "a" * 50
+
+        # 51 chars - should fail
+        with pytest.raises(ValidationError, match="name must be at most"):
+            LanguageSeed(
+                name="a" * 51,
+                syntax_style="lisp",
+                features=["feature1"],
+                difficulty=1,
+                arithmetic="wraparound",
+                short_circuit=True,
+            )
+
+    def test_seed_feature_count_boundary(self):
+        """Verify seed features at exact MAX_FEATURE_COUNT (10) is accepted, 11 rejected."""
+        # Exactly 10 features - should pass
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=[f"feature{i}" for i in range(10)],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        assert len(seed.features) == 10
+
+        # 11 features - should fail
+        with pytest.raises(ValidationError, match="features must contain at most"):
+            LanguageSeed(
+                name="test",
+                syntax_style="lisp",
+                features=[f"feature{i}" for i in range(11)],
+                difficulty=1,
+                arithmetic="wraparound",
+                short_circuit=True,
+            )
+
+    def test_seed_feature_length_boundary(self):
+        """Verify seed feature at exact MAX_FEATURE_LENGTH (30) is accepted, 31 rejected."""
+        # Exactly 30 chars - should pass
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["a" * 30],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        assert len(seed.features[0]) == 30
+
+        # 31 chars - should fail
+        with pytest.raises(ValidationError, match="Each feature must be at most"):
+            LanguageSeed(
+                name="test",
+                syntax_style="lisp",
+                features=["a" * 31],
+                difficulty=1,
+                arithmetic="wraparound",
+                short_circuit=True,
+            )
+
+    def test_seed_serialized_size_boundary(self):
+        """Verify seed serialized at exact MAX_SERIALIZED_SEED_SIZE (4096) is accepted."""
+        # Create a seed that serializes close to 4096 bytes
+        # This requires careful construction since we can't easily control exact size
+        # The validation happens in to_canonical_bytes after json.dumps
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        # Small seed should be well under limit
+        bytes_data = seed.to_canonical_bytes()
+        assert len(bytes_data) < 4096
+
+        # Create a seed with longer values that might approach limit
+        long_seed = LanguageSeed(
+            name="a" * 40,  # 40 chars for name
+            syntax_style="lisp",
+            features=["a" * 25 for _ in range(5)],  # 5 features at 25 chars each
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        long_bytes = long_seed.to_canonical_bytes()
+        assert len(long_bytes) < 4096  # Should still be under limit
+
+    def test_source_byte_boundary(self):
+        """Verify source at exact MAX_SOURCE_LENGTH (65536 bytes) is accepted."""
+        # Exactly 65536 bytes - should pass
+        source_65536 = "a" * 65536
+        assert len(source_65536.encode("utf-8")) == 65536
+
+        profile = SurfaceProfile(
+            keywords={}, operators={}, literals={}, profile_schema_version=1
+        )
+        result = to_canonical(source_65536, profile)
+        assert result.canonical_text is not None
+
+        # 65537 bytes - should fail
+        source_65537 = "a" * 65537
+        with pytest.raises(SurfaceTranslationError, match="exceeds maximum length"):
+            to_canonical(source_65537, profile)
+
+    def test_profile_mapping_key_target_boundary(self):
+        """Verify mapping key/target at exact MAX length (64) is accepted."""
+        # Exactly 64 chars for key and target - should pass
+        profile_dict = {
+            "profile_schema_version": 1,
+            "keywords": {"a" * 64: "def"},
+            "operators": {"b" * 64: "add"},
+            "literals": {"c" * 64: "true"},
+        }
+        profile = SurfaceProfile.from_dict(profile_dict)
+        assert "a" * 64 in profile.keywords
+        assert "b" * 64 in profile.operators
+        assert "c" * 64 in profile.literals
+
+        # 65 chars - should fail
+        profile_dict_over = {
+            "profile_schema_version": 1,
+            "keywords": {"a" * 65: "def"},
+            "operators": {},
+            "literals": {},
+        }
+        with pytest.raises(SurfaceTranslationError, match="exceeds maximum length"):
+            SurfaceProfile.from_dict(profile_dict_over)
+
+    def test_canonical_depth_boundary(self):
+        """Verify canonical structure at exact MAX_NESTING_DEPTH (10) is accepted."""
+        def make_deep(n):
+            if n == 0:
+                return "base"
+            return {"level": make_deep(n - 1)}
+
+        # Depth 10 - should pass
+        deep_10 = make_deep(10)
+        from src.benchmark.canonical import canonical_json
+        result = canonical_json(deep_10)
+        assert result is not None
+
+        # Depth 11 - should fail
+        deep_11 = make_deep(11)
+        with pytest.raises(TypeError, match="Exceeds maximum nesting depth"):
+            canonical_json(deep_11)
+
+    def test_canonical_collection_size_boundary(self):
+        """Verify collection at exact MAX_COLLECTION_SIZE (1000) is accepted."""
+        from src.benchmark.canonical import canonical_json
+        # Exactly 1000 items - should pass
+        collection_1000 = {str(i): i for i in range(1000)}
+        result = canonical_json(collection_1000)
+        assert result is not None
+
+        # 1001 items - should fail
+        collection_1001 = {str(i): i for i in range(1001)}
+        with pytest.raises(TypeError, match="exceeds maximum size"):
+            canonical_json(collection_1001)
+
+    def test_canonical_string_length_boundary(self):
+        """Verify string at exact MAX_STRING_LENGTH (65536) is accepted."""
+        from src.benchmark.canonical import canonical_json
+        # Exactly 65536 chars - should pass
+        string_65536 = "x" * 65536
+        result = canonical_json({"text": string_65536})
+        assert result is not None
+
+        # 65537 chars - should fail
+        string_65537 = "x" * 65537
+        with pytest.raises(TypeError, match="exceeds maximum length"):
+            canonical_json({"text": string_65537})

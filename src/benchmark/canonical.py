@@ -32,6 +32,12 @@ def _validate(value: Any, path: str = "$", *, object_key: bool = False, depth: i
             raise TypeError(
                 f"List exceeds maximum size of {MAX_COLLECTION_SIZE} at {path}"
             )
+        # Check string length of each item before recursive validation
+        for index, item in enumerate(value):
+            if isinstance(item, str) and len(item) > MAX_STRING_LENGTH:
+                raise TypeError(
+                    f"String at {path}[{index}] exceeds maximum length of {MAX_STRING_LENGTH}"
+                )
         return [
             _validate(item, f"{path}[{index}]", depth=depth + 1)
             for index, item in enumerate(value)
@@ -47,8 +53,8 @@ def _validate(value: Any, path: str = "$", *, object_key: bool = False, depth: i
                 raise TypeError(f"Object keys must be strings at {path}")
             if len(key) > MAX_STRING_LENGTH:
                 raise TypeError(f"Object key exceeds maximum length of {MAX_STRING_LENGTH} at {path}")
-            if len(str(item)) > MAX_STRING_LENGTH:
-                raise TypeError(f"String value exceeds maximum length of {MAX_STRING_LENGTH} at {path}")
+            if isinstance(item, str) and len(item) > MAX_STRING_LENGTH:
+                raise TypeError(f"String value at {path}.{key} exceeds maximum length of {MAX_STRING_LENGTH}")
             result[key] = _validate(item, f"{path}.{key}", depth=depth + 1)
         return result
     raise TypeError(f"Unsupported canonical identity value at {path}: {type(value).__name__}")

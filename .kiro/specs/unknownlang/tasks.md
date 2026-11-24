@@ -9,28 +9,28 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
 ## Tasks
 
 - [ ] 1. Project Setup and Foundation
-  - [-] 1.1 Initialize Python project structure
+  - [ ] 1.1 Initialize Python project structure
     - Create directory structure: `src/`, `tests/`, `sandbox/`, `frontend/`
     - Create `pyproject.toml` with dependencies: fastapi, lark, hypothesis, pytest, uvicorn, httpx
     - Set up virtual environment and install dependencies
     - Initialize git repository
     - _Requirements: 19.1_
 
-  - [-] 1.2 Set up testing framework
+  - [ ] 1.2 Set up testing framework
     - Configure pytest with `conftest.py`
     - Set up Hypothesis for property-based testing
     - Create test fixtures for language generation
     - _Requirements: 16.1, 16.2_
 
 - [ ] 2. Language Generator
-  - [~] 2.1 Implement seed hashing and validation
+  - [x] 2.1 Implement seed hashing and validation
     - Create `LanguageSeed` dataclass with name, syntax_style, features, difficulty
     - Implement deterministic seed hashing using hashlib
     - Add input validation for seed parameters
     - _Requirements: 5.1, 5.5_
     - _Property: 1, 7_
 
-  - [~] 2.2 Implement grammar builder
+  - [ ] 2.2 Implement grammar builder
     - Create `GrammarBuilder` class to generate CFG from seed
     - Implement terminal definitions (NUMBER, STRING, IDENTIFIER)
     - Implement production rules based on syntax_style (lisp, c-like, etc.)
@@ -38,13 +38,13 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 5.2, 5.3_
     - _Property: 2_
 
-  - [~] 2.3 Implement Lark serializer
+  - [ ] 2.3 Implement Lark serializer
     - Create `LarkSerializer` to output Lark-compatible grammar
     - Add grammar validation using Lark's `lark.Grammar`
     - Implement conflict detection
     - _Requirements: 5.2, 7.1_
 
-  - [~] 2.4 Implement semantic mapping and interpreter operations
+  - [ ] 2.4 Implement semantic mapping and interpreter operations
     - Create semantic operation registry (MVP: arithmetic, short_circuit ONLY)
     - Implement semantic validation: reject unsupported dimensions with ValidationError
     - Support ONLY: arithmetic (wraparound/saturating/error-on-overflow) and short_circuit (true/false)
@@ -54,7 +54,7 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 5.4, 5.6, 5.7, 6.3, 7.2, 7.3, 7.4_
     - _Property: 3_
 
-  - [~] 2.5 Implement LanguageGenerator facade
+  - [ ] 2.5 Implement LanguageGenerator facade
     - Create `LanguageGenerator` class with `generate()` and `validate_grammar()` methods
     - Implement `detect_conflicts()` for syntactic uniqueness
     - Add language specification serialization
@@ -67,20 +67,20 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - **Property 7: Reproducibility via Seeds**
     - **Validates: Requirements 5.5, 5.2, 4.3, 20.2, 20.3**
 
-- [ ] 3. Execution Engine
-  - [-] 3.1 Implement Lark parser integration
+- [x] 3. Execution Engine
+  - [x] 3.1 Implement Lark parser integration
     - Create `ExecutionEngine` class
     - Integrate Lark parser with generated grammars
     - Handle parse errors gracefully
     - _Requirements: 7.1_
 
-  - [-] 3.2 Implement interpreter with AST evaluation
+  - [x] 3.2 Implement interpreter with AST evaluation
     - Implement tree-walking interpreter for AST
     - Support integer arithmetic, boolean logic, function calls
     - Add scope management for variables
     - _Requirements: 7.3_
 
-  - [-] 3.3 Implement deterministic resource limits
+  - [x] 3.3 Implement deterministic resource limits
     - Implement interpreter-level limits: max_steps, max_ast_depth, max_call_depth, max_collection_size, max_string_size, max_output_size
     - Add step counter that increments per AST node evaluation
     - Add depth tracking for AST traversal and function calls
@@ -90,7 +90,7 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 7.5, 7.6, 20.8_
     - _Property: 8_
 
-  - [-] 3.4 Implement ExecutionResult with status
+  - [x] 3.4 Implement ExecutionResult with status
     - Create result types: success, error, step_limit_exceeded, recursion_limit_exceeded, output_limit_exceeded, ast_depth_exceeded, invalid_program
     - Include output, error_message, execution_time_ms
     - Add deterministic output verification
@@ -103,33 +103,33 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - **Validates: Requirements 3.4, 7.4, 20.1, 20.8**
 
 - [ ] 4. Challenge Generator
-  - [~] 4.1 Implement problem templates
+  - [ ] 4.1 Implement problem templates
     - Create templates for: array operations, string manipulation, recursion, sorting, search
     - Define function signatures for each problem type
     - Add difficulty-specific variations
     - _Requirements: 9.1_
 
-  - [~] 4.2 Implement difficulty scaling
+  - [ ] 4.2 Implement difficulty scaling
     - Scale complexity from level 1-5
     - Adjust data size, operation complexity, edge cases
     - Map difficulty to language difficulty
     - _Requirements: 9.2_
 
-  - [~] 4.3 Implement example and test case generation
+  - [ ] 4.3 Implement example and test case generation
     - Generate 3-5 public example programs
     - Generate 10-20 total test cases
     - Ensure hidden tests differ from examples
     - _Requirements: 9.3, 9.4, 20.4_
     - _Property: 5_
 
-  - [~] 4.4 Implement reference implementation generator
+  - [ ] 4.4 Implement reference implementation generator
     - Create reference solutions in generated language using SEPARATE templates (not production challenge templates)
     - Reference solutions must be mathematically derivable from formal semantics
     - DO NOT verify outputs using ExecutionEngine - use Independent Reference Evaluator
     - _Requirements: 8.1, 8.2, 9.5_
     - _Property: 4_
 
-  - [~] 4.5 Implement ChallengeGenerator facade
+  - [ ] 4.5 Implement ChallengeGenerator facade
     - Create `ChallengeGenerator` class with generate() method
     - Integrate with Language Generator
     - Store challenge with all components (requires verified oracle outputs from 5.2)
@@ -141,7 +141,7 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - **Validates: Requirements 9.4, 9.5, 20.4_
 
 - [ ] 5. Test Oracle
-  - [~] 5.1 Implement independent reference evaluator
+  - [ ] 5.1 Implement independent reference evaluator
     - **CRITICAL**: This evaluator MUST be a completely separate codebase that does NOT import ExecutionEngine
     - Implement formal arithmetic semantics independently:
       - wraparound: r = ((a op b) mod 2^64), convert to signed
@@ -156,7 +156,7 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
     - _Property: 4_
 
-  - [~] 5.2 Implement cross-validation and invariant checking
+  - [ ] 5.2 Implement cross-validation and invariant checking
     - Run both production and reference evaluators on baseline cases
     - Verify mathematical invariants hold (e.g., and(x, false) = false)
     - When disagreement detected, invalidate affected test cases/challenges
@@ -170,30 +170,30 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 8.4_
 
 - [ ] 6. Model Provider - Ollama Integration
-  - [~] 6.1 Implement ModelAdapter abstract interface
+  - [ ] 6.1 Implement ModelAdapter abstract interface
     - Define abstract methods: list_models(), generate(), estimate_tokens()
     - Create base class with common functionality
     - _Requirements: 11.1_
 
-  - [~] 6.2 Implement OllamaAdapter
+  - [ ] 6.2 Implement OllamaAdapter
     - Implement Ollama local inference integration
     - Support llama2, codellama and other available models
     - Handle connection errors gracefully
     - _Requirements: 11.2, 3.5_
 
-  - [~] 6.3 Implement MockAdapter for testing
+  - [ ] 6.3 Implement MockAdapter for testing
     - Implement mock responses for development without Ollama
     - Support predefined test cases
     - Enable full benchmark flow testing offline
     - _Requirements: 3.5_
 
-  - [~] 6.4 Implement Prompt Builder
+  - [ ] 6.4 Implement Prompt Builder
     - Build prompts with language specification
     - Include syntax rules and examples
     - Exclude hidden test cases from prompts
     - _Requirements: 11.4_
 
-  - [~] 6.5 Implement Response Parser
+  - [ ] 6.5 Implement Response Parser
     - Extract code from markdown code blocks
     - Fall back to entire response if no code block
     - Handle malformed responses gracefully
@@ -206,19 +206,19 @@ The tasks are organized in dependency waves for optimal parallel execution. Core
     - _Requirements: 11.4, 11.5_
 
 - [ ] 7. Benchmark Evaluator
-  - [~] 7.1 Implement evaluation workflow orchestration
+  - [ ] 7.1 Implement evaluation workflow orchestration
     - Coordinate: challenge selection, language generation, example creation
     - Coordinate: test case generation, model invocation, execution, scoring
     - _Requirements: 10.1_
 
-  - [~] 7.2 Implement scoring functions
+  - [ ] 7.2 Implement scoring functions
     - Compute pass rate: passed / total
     - Compute generalization gap: public_score - hidden_score
     - Compute weighted correctness score with difficulty weights
     - _Requirements: 10.2, 10.3, 10.4_
     - _Property: 6_
 
-  - [~] 7.3 Implement result aggregation
+  - [ ] 7.3 Implement result aggregation
     - Aggregate results across challenges
     - Compute overall metrics
     - Generate result summaries
@@ -265,19 +265,19 @@ The following phases are deferred to after the core language engine is complete 
     - Display quick actions (New Language, New Challenge, Run Benchmark)
     - _Requirements: 14.1, 14.4_
 
-  - [~] 9.3 Implement Language Explorer page
+  - [ ] 9.3 Implement Language Explorer page
     - List generated languages
     - View language specification details
     - Display grammar and examples
     - _Requirements: 14.1, 14.3_
 
-  - [~] 9.4 Implement Benchmark Runner page
+  - [ ] 9.4 Implement Benchmark Runner page
     - Configure benchmark: select language, select models
     - Start benchmark execution
     - Show real-time progress
     - _Requirements: 14.1, 14.2_
 
-  - [~] 9.5 Implement Results Viewer page
+  - [ ] 9.5 Implement Results Viewer page
     - Display pass rates per model
     - Show generalization gap metrics
     - Add comparison charts
@@ -289,29 +289,29 @@ The following phases are deferred to after the core language engine is complete 
     - _Requirements: 16.3_
 
 - [ ] 10. Demo Flow Integration
-  - [~] 10.1 Implement end-to-end demo flow
+  - [ ] 10.1 Implement end-to-end demo flow
     - Connect: language generation → challenge creation → model evaluation → results
     - Ensure all components work together
     - _Requirements: 18.1, 18.2, 18.3, 18.4_
 
-  - [~] 10.2 Add demo script
+  - [ ] 10.2 Add demo script
     - Create demo CLI command
     - Support pre-generated languages for backup
     - Include cached results for fallback
     - _Requirements: 18.5_
 
-  - [~] 10.3 Checkpoint - Ensure all tests pass
+  - [ ] 10.3 Checkpoint - Ensure all tests pass
     - Run full test suite
     - Verify all acceptance criteria
     - Ask user if questions arise
 
 - [ ] 11. Database Integration (Optional for MVP)
-  - [~] 11.1 Implement SQLite database
+  - [ ] 11.1 Implement SQLite database
     - Create database schema from design
     - Add CRUD operations for languages, challenges, benchmarks, results
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
 
-  - [~] 11.2 Integrate database with API
+  - [ ] 11.2 Integrate database with API
     - Connect API endpoints to database
     - Add persistence for benchmark runs
     - _Requirements: 13.1_

@@ -1,0 +1,54 @@
+{
+  "deterministic_creation": {
+    "description": "Same seed and profile produce same environment ID",
+    "seed": {
+      "name": "test",
+      "syntax_style": "lisp",
+      "features": [
+        "arithmetic",
+        "functions"
+      ],
+      "difficulty": 1,
+      "arithmetic": "wraparound",
+      "short_circuit": true
+    },
+    "profile": {
+      "profile_schema_version": 1,
+      "keywords": {
+        "forge": "def"
+      },
+      "operators": {
+        "prax": "add"
+      },
+      "literals": {
+        "aye": "true"
+      }
+    }
+  },
+  "runtime_version_sensitivity": {
+    "description": "Different runtime_semantics_version produces different ID",
+    "version_2": {
+      "runtime_semantics_version": 2,
+      "grammar_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "semantic_spec_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "surface_profile_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  "manifest_reconstruction": {
+    "description": "Environment can be reconstructed from manifest",
+    "manifest_schema_version": 1,
+    "required_fields": [
+      "schema_version",
+      "environment_id",
+      "env_schema_version",
+      "generator_family_version",
+      "generator_algorithm_version",
+      "seed",
+      "surface_profile",
+      "runtime_semantics_version",
+      "grammar_sha256",
+      "semantic_spec_sha256",
+      "surface_profile_sha256"
+    ]
+  }
+}

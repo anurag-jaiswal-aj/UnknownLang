@@ -123,16 +123,21 @@ def _validate_manifest_version(manifest: DerivationManifest) -> None:
 def _validate_manifest_size(manifest: DerivationManifest) -> None:
     """Validate manifest size before expensive reconstruction.
 
-    Pre-flights validation using a lightweight estimate (field count and approximate size)
-    before full canonical serialization.
+    Pre-flights validation using actual serialized byte size before full
+    canonical serialization and reconstruction.
     """
-    # Quick preflight: check field count and estimate size without serialization
-    if len(manifest.to_dict()) > 20:  # Reasonable max field count
-        raise ValidationError("Manifest exceeds maximum field count")
-    if len(manifest.seed) > 100:  # Reasonable max seed dict size
-        raise ValidationError("Seed in manifest exceeds maximum size")
-    if len(manifest.surface_profile) > 100:  # Reasonable max profile size
-        raise ValidationError("Surface profile in manifest exceeds maximum size")
+    from src.benchmark.canonical import canonical_bytes
+
+    # Check actual serialized size to prevent memory exhaustion
+    try:
+        serialized = canonical_bytes(manifest.to_dict())
+        if len(serialized) > MAX_MANIFEST_SIZE:
+            raise ValidationError(
+                f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
+                f"({len(serialized)} bytes)"
+            )
+    except (TypeError, OverflowError) as e:
+        raise ValidationError(f"Failed to serialize manifest for size check: {e}")
 
 
 def reconstruct_environment_from_manifest(
@@ -146,10 +151,10 @@ def reconstruct_environment_from_manifest(
     Raises:
         ValidationError: If manifest is invalid or identity doesn't match
     """
-    # Validate version fields first (cheap checks before expensive size check)
+    # Validate version fields first (cheap checks before size validation)
     _validate_manifest_version(manifest)
 
-    # Validate manifest size after version checks but before reconstruction
+    # Validate manifest size before reconstruction
     _validate_manifest_size(manifest)
 
     # Reconstruct seed and surface profile

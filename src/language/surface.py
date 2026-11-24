@@ -30,6 +30,9 @@ MAX_MAPPING_TARGET_LENGTH = 64
 # 64KB is more than sufficient for any benchmark program
 MAX_SOURCE_LENGTH = 65_536
 
+# Maximum string length for surface profile mappings
+MAX_STRING_LENGTH = 65_536
+
 
 @dataclass(frozen=True)
 class SurfaceProfile:
@@ -95,6 +98,15 @@ class SurfaceProfile:
                     raise SurfaceTranslationError(
                         f"{category} target exceeds maximum length of {MAX_MAPPING_TARGET_LENGTH}: {target!r}"
                     )
+                # Enforce MAX_STRING_LENGTH on all mapping strings (65536 bytes UTF-8)
+                if len(name.encode("utf-8")) > MAX_STRING_LENGTH:
+                    raise SurfaceTranslationError(
+                        f"{category} key exceeds maximum UTF-8 byte length of {MAX_STRING_LENGTH}: {name!r}"
+                    )
+                if len(target.encode("utf-8")) > MAX_STRING_LENGTH:
+                    raise SurfaceTranslationError(
+                        f"{category} target exceeds maximum UTF-8 byte length of {MAX_STRING_LENGTH}: {target!r}"
+                    )
         profile = cls(
             keywords=dict(value.get("keywords", {})),  # type: ignore[arg-type]
             operators=dict(value.get("operators", {})),  # type: ignore[arg-type]
@@ -115,7 +127,8 @@ class TranslationResult:
 
 # Maximum source text length in UTF-8 bytes
 # 64KB is more than sufficient for any benchmark program
-MAX_SOURCE_LENGTH_BYTES = 65_536
+# This constant is referenced in MAX_SOURCE_LENGTH_BYTES (above) for consistency
+MAX_SOURCE_LENGTH = 65_536  # Deprecated: use MAX_SOURCE_LENGTH_BYTES
 
 
 def _tokenize(source: str) -> list[str]:
@@ -128,9 +141,9 @@ def _tokenize(source: str) -> list[str]:
         SurfaceTranslationError: If source exceeds maximum length in bytes
     """
     source_bytes = len(source.encode("utf-8"))
-    if source_bytes > MAX_SOURCE_LENGTH_BYTES:
+    if source_bytes > MAX_SOURCE_LENGTH:
         raise SurfaceTranslationError(
-            f"Source text exceeds maximum length of {MAX_SOURCE_LENGTH_BYTES} bytes "
+            f"Source text exceeds maximum length of {MAX_SOURCE_LENGTH} bytes "
             f"({source_bytes} bytes, {len(source)} characters)"
         )
 

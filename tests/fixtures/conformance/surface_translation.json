@@ -1,0 +1,44 @@
+{
+  "keyword_prefix_translation": {
+    "description": "Keyword prefix like ifx is translated to if",
+    "source": "(ifx 7 1)",
+    "profile": {
+      "profile_schema_version": 1,
+      "keywords": {
+        "ifx": "if"
+      },
+      "operators": {},
+      "literals": {}
+    },
+    "expected_canonical": "(if 7 1)"
+  },
+  "operator_translation": {
+    "description": "Operator prax maps to add",
+    "source": "(prax 1 2)",
+    "profile": {
+      "profile_schema_version": 1,
+      "keywords": {},
+      "operators": {
+        "prax": "add"
+      },
+      "literals": {}
+    },
+    "expected_canonical": "(add 1 2)"
+  },
+  "boolean_literals": {
+    "description": "Boolean literals translate correctly",
+    "source": "(zeph aye nay)",
+    "profile": {
+      "profile_schema_version": 1,
+      "keywords": {},
+      "operators": {
+        "zeph": "and"
+      },
+      "literals": {
+        "aye": "true",
+        "nay": "false"
+      }
+    },
+    "expected_canonical": "(and true false)"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "empty_program": {
+    "description": "Empty program returns None",
+    "program": "",
+    "expected": {
+      "status": "success",
+      "value": null
+    }
+  },
+  "definition_only": {
+    "description": "Definition-only program returns None",
+    "program": "(def f (x) x)",
+    "expected": {
+      "status": "success",
+      "value": null
+    }
+  },
+  "expression_then_definition": {
+    "description": "Expression followed by definition returns expression value",
+    "program": "5\n(def f (x) x)",
+    "expected": {
+      "status": "success",
+      "value": 5
+    }
+  },
+  "definition_then_expression": {
+    "description": "Definition followed by expression returns expression value",
+    "program": "(def f (x) x)\n5",
+    "expected": {
+      "status": "success",
+      "value": 5
+    }
+  },
+  "multiple_expressions": {
+    "description": "Multiple expressions return last value",
+    "program": "1\n2\n3",
+    "expected": {
+      "status": "success",
+      "value": 3
+    }
+  },
+  "division_zero": {
+    "description": "Division by zero produces structured error",
+    "program": "(div 1 0)",
+    "expected": {
+      "status": "error",
+      "error_kind": "division_by_zero"
+    }
+  }
+}
