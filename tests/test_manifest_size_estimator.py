@@ -3,6 +3,9 @@
 Tests exact incremental byte accounting for manifest size estimation.
 Verifies that the estimator matches the canonical JSON serialization contract
 in src/benchmark/canonical.py.
+
+Wave 2.2.12 adds permanent automated manifest-level equality tests to prevent
+regressions in exact byte accounting.
 """
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ from src.benchmark.manager import (
     EnvironmentManager,
     MAX_MANIFEST_SIZE,
     reconstruct_environment_from_manifest,
+    _calculate_manifest_size_bounded,
     _estimate_dict_size_bounded,
     _estimate_json_value_size,
     _validate_manifest_size_bounded,
@@ -352,3 +356,122 @@ class TestUTF8Encoding:
         estimated = _estimate_json_value_size(s, MAX_MANIFEST_SIZE, "$")
         actual = len(canonical_bytes(s))
         assert estimated == actual
+
+
+class TestManifestLevelEquality:
+    """Wave 2.2.12 - Permanent automated manifest-level equality tests.
+    
+    These tests use the actual production API to construct DerivationManifest
+    instances and verify that the estimated size matches the actual canonical
+    serialized byte length exactly. This prevents regressions in exact byte
+    accounting for production manifests.
+    
+    Each test:
+    1. Creates a real manifest through the public EnvironmentManager API
+    2. Calculates the estimated size using _validate_manifest_size_bounded
+    3. Calculates the actual size using canonical_bytes
+    4. Asserts exact equality (not >=)
+    """
+
+    def test_minimal_manifest(self):
+        """Test minimal valid manifest through production API."""
+        seed = LanguageSeed(
+            name="test",
+            syntax_style="lisp",
+            features=["arithmetic"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+        
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+        
+        actual_size = len(canonical_bytes(manifest.to_dict()))
+        
+        # Call production helper for exact size calculation
+        estimated_size = _calculate_manifest_size_bounded(manifest)
+        
+        # EXACT equality assertion - no >=, no <=
+        assert estimated_size == actual_size, (
+            f"Manifest-level byte accounting mismatch: "
+            f"estimated={estimated_size}, actual={actual_size}, diff={estimated_size - actual_size}"
+        )
+
+    def test_normal_manifest_with_unicode(self):
+        """Test manifest with Unicode content through production API."""
+        seed = LanguageSeed(
+            name="test_日本語",
+            syntax_style="lisp",
+            features=["arithmetic", "functions", "recursion"],
+            difficulty=3,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {"def": "def"}, "operators": {"add": "add"}, "literals": {"true": "true"}}
+        
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+        
+        actual_size = len(canonical_bytes(manifest.to_dict()))
+        
+        # Call production helper for exact size calculation
+        estimated_size = _calculate_manifest_size_bounded(manifest)
+        
+        assert estimated_size == actual_size, (
+            f"Manifest-level byte accounting mismatch: "
+            f"estimated={estimated_size}, actual={actual_size}, diff={estimated_size - actual_size}"
+        )
+
+    def test_all_arithmetic_modes(self):
+        """Test manifests with all supported arithmetic modes."""
+        for arithmetic in ["wraparound", "saturating", "error-on-overflow"]:
+            seed = LanguageSeed(
+                name="test",
+                syntax_style="lisp",
+                features=["arithmetic", "functions"],
+                difficulty=1,
+                arithmetic=arithmetic,
+                short_circuit=True,
+            )
+            profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+            
+            mgr = EnvironmentManager()
+            env, manifest = mgr.create_environment(seed, profile)
+            
+            actual_size = len(canonical_bytes(manifest.to_dict()))
+            
+            # Call production helper for exact size calculation
+            estimated_size = _calculate_manifest_size_bounded(manifest)
+            
+            assert estimated_size == actual_size, (
+                f"Manifest-level byte accounting mismatch for arithmetic={arithmetic}: "
+                f"estimated={estimated_size}, actual={actual_size}, diff={estimated_size - actual_size}"
+            )
+
+    def test_escaped_strings_in_manifest(self):
+        """Test manifest with strings requiring JSON escaping."""
+        # Create a seed with special characters that need escaping
+        seed = LanguageSeed(
+            name="test\"quote\\backslash",
+            syntax_style="lisp",
+            features=["arithmetic", "functions"],
+            difficulty=1,
+            arithmetic="wraparound",
+            short_circuit=True,
+        )
+        profile = {"profile_schema_version": 1, "keywords": {}, "operators": {}, "literals": {}}
+        
+        mgr = EnvironmentManager()
+        env, manifest = mgr.create_environment(seed, profile)
+        
+        actual_size = len(canonical_bytes(manifest.to_dict()))
+        
+        # Call production helper for exact size calculation
+        estimated_size = _calculate_manifest_size_bounded(manifest)
+        
+        assert estimated_size == actual_size, (
+            f"Manifest-level byte accounting mismatch for escaped strings: "
+            f"estimated={estimated_size}, actual={actual_size}, diff={estimated_size - actual_size}"
+        )

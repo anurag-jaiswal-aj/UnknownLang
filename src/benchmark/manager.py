@@ -160,17 +160,16 @@ def _validate_manifest_size(manifest: DerivationManifest) -> None:
     _validate_manifest_size_bounded(manifest)
 
 
-def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
-    """Bounded size validation that stops at 500KB budget.
+def _calculate_manifest_size_bounded(manifest: DerivationManifest) -> int:
+    """Calculate exact manifest size with bounded checking.
 
     This function performs exact incremental byte accounting that matches
     the canonical JSON serialization contract in canonical.py.
 
-    It uses a bounded serializer that:
-    1. Validates all string lengths before encoding
-    2. Calculates exact UTF-8 byte count for each element
-    3. Stops immediately when budget exceeded
-    4. Does not build complete serialized output
+    Returns the exact byte count when within budget.
+    Raises ValidationError if budget exceeded.
+    Stops processing immediately when budget exceeded.
+    Does not build complete serialized output.
     """
     from src.language.surface import MAX_STRING_LENGTH as MAX_STRING
 
@@ -244,6 +243,45 @@ def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
             f"Manifest exceeds maximum size of {MAX_MANIFEST_SIZE} bytes "
             f"({size} bytes estimated)"
         )
+
+    return size
+
+
+def _validate_manifest_size_bounded(manifest: DerivationManifest) -> None:
+    """Validate manifest size before expensive reconstruction.
+
+    Pre-flights validation using a bounded serializer that stops as soon
+    as the 500KB budget is exceeded. This prevents unbounded serialization
+    of oversized input.
+
+    The preflight:
+    1. Checks top-level field count (should be 11 for valid manifests)
+    2. Checks seed and surface-profile dict sizes before iterating
+    3. Validates string lengths before encoding
+    4. Tracks cumulative size and stops at 500KB
+    5. Does not build complete serialized copy
+    """
+    # Quick field count preflight - valid manifest has exactly 11 fields
+    if len(manifest.to_dict()) != 11:
+        raise ValidationError(
+            f"Manifest field count invalid: expected 11, got {len(manifest.to_dict())}"
+        )
+
+    # Check seed dict size before iterating
+    if len(manifest.seed) > 100:
+        raise ValidationError(
+            f"Seed exceeds maximum field count: {len(manifest.seed)} > 100"
+        )
+
+    # Check surface profile size before iterating
+    if len(manifest.surface_profile) > 100:
+        raise ValidationError(
+            f"Surface profile exceeds maximum field count: {len(manifest.surface_profile)} > 100"
+        )
+
+    # Bounded validation using shared helper
+    # The helper calculates exact size and validates budget
+    _calculate_manifest_size_bounded(manifest)
 
 
 def _estimate_dict_size_bounded(d: dict, budget: int, path: str) -> int:

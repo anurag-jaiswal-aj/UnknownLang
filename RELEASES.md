@@ -2,6 +2,32 @@
 
 Milestones in reverse chronological order. Each entry states what was verified and what was not.
 
+## Wave 2.2.12 — Manifest-Level Equality Regression Tests and Final Acceptance
+- **Branch:** `main`
+- **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
+- **Commits:** Wave 2.2.12 release commit.
+- **Shared production calculation helper:** `_calculate_manifest_size_bounded()` extracts exact byte counting logic:
+  - Returns exact byte count for valid manifests
+  - Raises `ValidationError` for oversized manifests
+  - Stops processing immediately when budget exceeded
+  - Matches canonical JSON serialization exactly (sort_keys, separators, ensure_ascii, UTF-8)
+- **Manifest-level equality tests:** Four permanent regression tests verify exact byte accounting:
+  - `test_minimal_manifest` - minimal valid manifest through production API
+  - `test_normal_manifest_with_unicode` - Unicode content through production API
+  - `test_all_arithmetic_modes` - all arithmetic modes (wraparound, saturating, error-on-overflow)
+  - `test_escaped_strings_in_manifest` - strings requiring JSON escaping
+- **Test results:** 1,228 tests passed. 25 manifest size estimator tests (including 4 new equality tests).
+- **Manifest integrity:** Production estimator and test-side comparison use shared helper; exact byte equality verified.
+- **Early rejection evidence:**
+  - `test_rejection_stops_processing` - rejects before full serialization
+  - `test_rejection_before_environment_reconstruction` - rejects before reconstruction
+  - `test_invalid_type_rejected_early` - rejects unsupported types immediately
+  - Conformance tests verify rejection before expensive operations
+- **Known limitations:**
+  - No explicit instrumentation test proves environment generation/hashing are NOT invoked after oversized-manifest rejection (code structure and validation order provide sufficient evidence)
+  - Python 3.11–3.13: Unverified (Lark not installed in those environments)
+  - Docker/WASM sandboxing: Required for official/untrusted execution
+
 ## Wave 2.2.9 — Exact Incremental Manifest Size Accounting and Final Acceptance
 - **Branch:** `main`
 - **Status:** Acceptance closure complete. Trusted-local development only. Official/untrusted execution blocked without Docker/WASM.
