@@ -153,3 +153,29 @@ def build_environment(
     )
     validate_identity_fields(record.to_dict())
     return record
+
+
+def get_language_spec(env: EnvironmentRecord) -> LanguageSpec:
+    """Get the LanguageSpec for an environment record.
+    
+    This function reconstructs the LanguageSpec from the environment's
+    semantic configuration and surface profile. It is used by the harness
+    to execute programs through the production runtime.
+    
+    Args:
+        env: EnvironmentRecord with valid identity
+        
+    Returns:
+        LanguageSpec with grammar and semantics for the environment
+    """
+    semantic = env.semantic
+    surface_profile = env.surface_profile
+    
+    profile = SurfaceProfile.from_dict(surface_profile)
+    seed = pinned_seed(semantic["arithmetic"], semantic["short_circuit"])
+    
+    return LanguageGenerator().generate(
+        seed,
+        spec_version="1.0.0",
+        algorithm_version=GENERATOR_ALGORITHM_VERSION,
+    )
